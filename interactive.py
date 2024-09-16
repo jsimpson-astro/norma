@@ -22,28 +22,38 @@ class InteractiveNorma:
     _index_fmts = ['%3.9f', '%.18e', '%i', '%i']
     
     # matplotlib axes.plot arguments for current spectrum
-    current_plot_params = dict(spec_kws = {'color': '#074517', 'alpha': 0.3},
-                               cont_kws = {'color': '#0d7a2a'},
-                               index_kws = {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-                               sel_kws = {'color': '#09521c', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
-                               man_kws = {'color': '#12cc43', 'marker': 'D', 'linestyle': 'None', 'markersize': 7},
-                              )
+    current_plot_params = dict(
+        spec_kws = {'color': '#074517', 'alpha': 0.3},
+        cont_kws = {'color': '#0d7a2a'},
+        index_kws = {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
+        sel_kws = {'color': '#09521c', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
+        man_kws = {'color': '#12cc43', 'marker': 'D', 'linestyle': 'None', 'markersize': 7},
+        )
     # matplotlib axes.plot arguments for spectra show above the current spectrum
     # note that alpha is scaled to decrease the further away from `current` the spectrum is, starting at this value
-    above_plot_params = dict(spec_kws={'color': '#726bd6', 'alpha': 0.2},
-                             cont_kws={'color': '#14a3fc', 'alpha': 0.3}, 
-                             index_kws={'color': '#14257a', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3},
-                             sel_kws={'color': '#3054e3', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3}, 
-                             man_kws={'color': '#38b8eb', 'alpha': 0.3, 'marker': 'D', 'linestyle': 'None', 'markersize': 4}
-                            )
+    above_plot_params = dict(
+        spec_kws={'color': '#726bd6', 'alpha': 0.2},
+        cont_kws={'color': '#14a3fc', 'alpha': 0.3}, 
+        index_kws={'color': '#14257a', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3},
+        sel_kws={'color': '#3054e3', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3}, 
+        man_kws={'color': '#38b8eb', 'alpha': 0.3, 'marker': 'D', 'linestyle': 'None', 'markersize': 4}
+        )
     # matplotlib axes.plot arguments for spectra show below the current spectrum
     # note that alpha is scaled to decrease the further away from `current` the spectrum is, starting at this value
-    below_plot_params = dict(spec_kws={'color': '#f55668', 'alpha': 0.2},
-                             cont_kws={'color': '#ff6176', 'alpha': 0.3}, 
-                             index_kws={'color': '#66090e', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3},
-                             sel_kws={'color': '#e32228', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3}, 
-                             man_kws={'color': '#ff1925', 'alpha': 0.3, 'marker': 'D', 'linestyle': 'None', 'markersize': 4}
-                            )
+    below_plot_params = dict(
+        spec_kws={'color': '#f55668', 'alpha': 0.2},
+        cont_kws={'color': '#ff6176', 'alpha': 0.3}, 
+        index_kws={'color': '#66090e', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3},
+        sel_kws={'color': '#e32228', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3}, 
+        man_kws={'color': '#ff1925', 'alpha': 0.3, 'marker': 'D', 'linestyle': 'None', 'markersize': 4}
+        )
+
+    base_plot_params = dict(
+        fig_facecolor='white',
+        axes_facecolor='white',
+        text_color='black',
+        axes_edgecolor='black'
+        )
 
     def __init__(
         self, 
@@ -52,6 +62,7 @@ class InteractiveNorma:
         start_index: int = 0,
         n_plot: int = 3,
         thinning_factor: int = 10,
+        wrap: bool = False
         ):
         
         self._on_press_dict = {
@@ -86,7 +97,6 @@ class InteractiveNorma:
         self._index_files = index_files
         self._max_index = len(spec_files) - 1
 
-        spec_file, index_file = self._spec_files[start_index], self._index_files[start_index]
         self.current_index = start_index
         
         self._enable_wrapping = False
@@ -137,13 +147,14 @@ class InteractiveNorma:
         
         ax.set_xlabel(r'Wavelength ($\AA$)', fontsize=14)
         ax.set_ylabel('Flux (arb. unit)', fontsize=14)
-        ax.set_title(f"Spectrum {self.current_index+1}")
+        ax.set_title(f"Spectrum {self.current_index + 1} - {self._spec_files[self.current_index]}")
 
         # performance improvements?
         plt.style.use('fast')
         plt.rcParams['agg.path.chunksize'] = 1000
         #plt.rcParams['path.simplify'] = True
         #plt.rcParams['path.simplify_threshold'] = 0.1
+        self._set_base_plot_params()
         
         current_spec_data, current_index_data = self._read_single(self.current_index)
         current_artist_dict = self._plot_single(current_spec_data, current_index_data, **self.current_plot_params)
@@ -204,6 +215,24 @@ class InteractiveNorma:
             self._hide_single(rel_idx)
 
         self._reset_home()
+
+    def _set_base_plot_params(self):
+        """
+        Setup the parameters specified in self._base_plot_params
+        """
+        fig, ax = self._fig, self._axes
+        base_plot_params = self.base_plot_params
+
+        fig.set_facecolor(base_plot_params['fig_facecolor'])
+        ax.set_facecolor(base_plot_params['axes_facecolor'])
+
+        ax.title.set_color(base_plot_params['text_color'])
+        ax.xaxis.label.set_color(base_plot_params['text_color'])
+        ax.yaxis.label.set_color(base_plot_params['text_color'])
+
+        ax.tick_params(color=base_plot_params['axes_edgecolor'], labelcolor=base_plot_params['text_color'])
+        for spine in ax.spines.values():
+            spine.set_edgecolor(base_plot_params['axes_edgecolor'])
 
     def _plot_single(
         self, 
@@ -304,7 +333,7 @@ class InteractiveNorma:
         """
         Updates the title to match the current index
         """
-        title = f"Spectrum {self.current_index+1}"
+        title = f"Spectrum {self.current_index + 1} - {self._spec_files[self.current_index]}"
         self._axes.set_title(title)
 
     def _get_rel(self, rel_idx: int):
