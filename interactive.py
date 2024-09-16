@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
 class InteractiveNormalisation:
     """
@@ -8,7 +9,7 @@ class InteractiveNormalisation:
     _help_str = (
         "Maxima modification:\n"
         "Current spectrum shown in green\n"
-        "Double click to enable/disable points\n"
+        "Use v or double-click to toggle existing points\n"
         "up/down - scroll through spectra\n"
         "a - add manual points\td - remove points\n"
         "x - spectra ghosts\tt - thinning\n"
@@ -54,13 +55,13 @@ class InteractiveNormalisation:
         self._on_press_dict = {
             'up': self.move_up_event,
             'down': self.move_down_event,
-            'a': self.add_manual_point_event,
             'v': self.toggle_point_event,
+            'a': self.add_manual_point_event,
             'd': self.remove_point_event,
-            'x': self.hide_event,
-            't': self.thin_event,
-            'z': self.hide_points_event,
-            'w': self.hide_current_points_event
+            'x': self.hide_ghosts_event,
+            'z': self.hide_ghost_points_event,
+            'w': self.hide_current_points_event,
+            't': self.thin_event
             }
 
         self._started = False
@@ -316,8 +317,6 @@ class InteractiveNormalisation:
         index = min(max(self.current_index + rel_idx, 0), self.max_index)
         index_file = self._index_files[index]
 
-        print(f"Writing index {index}, rel_idx {rel_idx}, file {index_file}")
-        
         index_data = self._index_data_list[rel_idx]
         
         index_data = index_data[index_data['wvs'].argsort()]
@@ -330,7 +329,6 @@ class InteractiveNormalisation:
         """
         spec_file = self._spec_files[index]
         index_file = self._index_files[index]
-        print(f"Reading index: {index}, file: {index_file}")
 
         spec_data = np.loadtxt(spec_file)
         index_data = np.loadtxt(index_file, dtype=self._index_dtypes)
@@ -536,28 +534,38 @@ class InteractiveNormalisation:
         """
         Gets the closest point to the event and selects/deselects it.
         """
-        idx = self._get_closest(event.x, event.y)
-        print(f"{idx}: {self._index_data_list[0]['sel'][idx]}")
+        idx = self._get_closest(event.x, event.y, only_selected=False, include_manual=False)
         self._index_data_list[0]['sel'][idx] = not self._index_data_list[0]['sel'][idx]
-        print(f"{idx}: {self._index_data_list[0]['sel'][idx]}")
         self._update_single(*self._get_rel(0), adjust=True)
     
     def add_manual_point_event(self, event):
         """
         Adds a manual point at the event location
         """
-        pass
+        entry = np.array((event.xdata, event.ydata, -1, True), dtype=self._index_dtypes)
+        insert_idx = np.searchsorted(self._index_data_list[0]['wvs'], event.xdata)
+        self._index_data_list[0] = np.insert(self._index_data_list[0], insert_idx, entry)
+
+        self._update_single(*self._get_rel(0), adjust=True)
 
     def remove_point_event(self, event):
         """
         Removes the nearest point to the event location.
         """
+        idx = self._get_closest(event.x, event.y, only_selected=True, include_manual=True)
+
+        # delete if closest is a manual point, else toggle
+        if self._index_data_list[0]['index'][idx] == -1:
+            self._index_data_list[0] = np.delete(self._index_data_list[0], idx)
+        else:
+            self._index_data_list[0]['sel'][idx] = False
+
+        self._update_single(*self._get_rel(0), adjust=True)
+
+    def hide_ghosts_event(self, event):
         pass
 
-    def hide_event(self, event):
-        pass
-
-    def hide_points_event(self, event):
+    def hide_ghost_points_event(self, event):
         pass
 
     def hide_current_points_event(self, event):
