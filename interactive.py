@@ -14,6 +14,7 @@ class InteractiveNormalisation:
         "a - add manual points\td - remove points\n"
         "x - spectra ghosts\tt - thinning\n"
         "z - ghost points\tw - current points\n"
+        "Press enter or q to quit\n"
         )
     
     # numpy setup for read/write of index files
@@ -49,12 +50,15 @@ class InteractiveNormalisation:
         spec_files: list[str], 
         index_files: list[str], 
         start_index: int = 0,
-        n_plot: int = 3
+        n_plot: int = 3,
+        thinning_factor: int = 10,
         ):
         
         self._on_press_dict = {
             'up': self.move_up_event,
             'down': self.move_down_event,
+            'enter': self.quit_event,
+            'q': self.quit_event,
             'v': self.toggle_point_event,
             'a': self.add_manual_point_event,
             'd': self.remove_point_event,
@@ -75,6 +79,7 @@ class InteractiveNormalisation:
             raise FileNotFoundError(f"Missing files: {missing_files}")
 
         self.n_plot = n_plot
+        self.thinning_factor = thinning_factor
         
         # set attributes
         self._spec_files = spec_files
@@ -106,23 +111,22 @@ class InteractiveNormalisation:
         self._hide_ghosts = False
         self._hide_ghost_points = False
         self._hide_current_points = False
+        self._thinning = False
 
         self._initialise_plots()
 
         self._started = True
         self._write_on_exit = [0]
+        self._exit = False
 
-        # wait in loop
-        plt.show(block=False)
+        # start interactive window, wait for exit
         print(self._help_str)
-        prompt = 'none'
-        while prompt.strip() != '':
-        	prompt = input("Press enter to quit: ")
+        plt.show(block=True)
         
-        plt.close()
-
         # need to write out current and all loaded/not written 
+        print("Saving index files...")
         _=[self._write_single(rel_idx) for rel_idx in self._write_on_exit]
+        print("Done.")
 
     
     def _initialise_plots(self):
@@ -267,8 +271,12 @@ class InteractiveNormalisation:
         locmax_sel = locmax[sel_filt]
 
         if not adjust:
-            artist_dict['spec'].set_data(spec_data[:, 0], spec_data[:, 1])
+            if self._thinning:
+                artist_dict['spec'].set_data(spec_data[::self._thinning_factor, 0], spec_data[::self._thinning_factor, 1])
+            else:
+                artist_dict['spec'].set_data(spec_data[:, 0], spec_data[:, 1])
             artist_dict['index'].set_data(spec_data[:, 0][idxs], spec_data[:, 1][idxs])
+
         artist_dict['sel'].set_data(spec_data[:, 0][locmax_sel], spec_data[:, 1][locmax_sel])
         artist_dict['man'].set_data(man['wvs'], man['flux'])
 
@@ -416,12 +424,16 @@ class InteractiveNormalisation:
         # only update if needed
         if hide != self._hidden[rel_idx]:
             spec_data, index_data, artist_dict = self._get_rel(rel_idx)
-            # if hide ghosts is on, only show if it is current
+            # if hide ghosts is on, only show if it is current - but this will never happen, because we only hide above/below
             if self._hide_ghosts:
-                if rel_idx == 0:
-                    [a.set_visible(not hide) for a in artist_dict.values()]
+                pass
             else:
-                [a.set_visible(not hide) for a in artist_dict.values()]
+                # don't toggle them here, they are handled by the ghost point event
+                # just ensure they stay as is when revealed/hidden
+                if self._hide_ghost_points:
+                    [a.set_visible(not hide) for k, a in artist_dict.items() if k in ['spec', 'cont']]
+                else:
+                    [a.set_visible(not hide) for a in artist_dict.values()]
         else:
             pass
 
@@ -524,6 +536,13 @@ class InteractiveNormalisation:
         else:
             self.change_index(self.current_index - 1)
 
+    def quit_event(self, event):
+        """
+        Exit interactive program
+        """
+        self._exit = True
+        plt.close()
+
     def toggle_point_event(self, event):
         """
         Gets the closest point to the event and selects/deselects it.
@@ -557,7 +576,12 @@ class InteractiveNormalisation:
         self._update_single(*self._get_rel(0), adjust=True)
 
     def hide_ghosts_event(self, event):
+        """
+        Toggle hiding of ghosts
+        Interacts with _hide_individual to prevent it from unhiding ghosts hidden here
+        """
         self._hide_ghosts = not self._hide_ghosts
+        print("Ghosts hidden" if self._hide_ghosts else "Ghosts unhidden")
         # relative indices of ghosts e.g. (-2, -1, +1, +2)
         ghost_rel_idxs = [i for i in range(-self.n_ghosts, 0)] + [i for i in range(1, self.n_ghosts + 1)]
 
@@ -565,17 +589,45 @@ class InteractiveNormalisation:
         ghost_artist_list = [self._artist_list[rel_idx] for rel_idx in ghost_rel_idxs if not self._hidden[rel_idx]]
 
         # swap the visibility of these
-        _ = [a.set_visible(not self._hide_ghosts) for d in ghost_artist_list for a in d.values()]
+        if self._hide_ghost_points:
+            _ = [a.set_visible(not self._hide_ghosts) for d in ghost_artist_list for k, a in d.items() if k in ['spec', 'cont']]
+        else:
+            _ = [a.set_visible(not self._hide_ghosts) for d in ghost_artist_list for a in d.values()]
 
     def hide_ghost_points_event(self, event):
+        """
+        Toggle hiding of ghost points
+        Interacts with _hide_individual to prevent it from unhiding ghosts points hidden here
+        """
         self._hide_ghost_points = not self._hide_ghost_points
+        print("Ghost points hidden" if self._hide_ghost_points else "Ghost points unhidden")
+        # relative indices of ghosts e.g. (-2, -1, +1, +2)
+        ghost_rel_idxs = [i for i in range(-self.n_ghosts, 0)] + [i for i in range(1, self.n_ghosts + 1)]
+
+        # find ghosts that are not already hidden
+        ghost_artist_list = [self._artist_list[rel_idx] for rel_idx in ghost_rel_idxs if not self._hidden[rel_idx]]
+
+        # swap the visibility of these if ghosts are not hidden
+        if not self._hide_ghosts:
+            _ = [a.set_visible(not self._hide_ghost_points) for d in ghost_artist_list for k, a in d.items() if k in ['index', 'sel', 'man']]
 
     def hide_current_points_event(self, event):
+        """
+        Toggle hiding of points in current spectrum
+        """
         self._hide_current_points = not self._hide_current_points
+        print("Current points hidden" if self._hide_current_points else "Current points unhidden")
+        artist_dict = self._artist_list[0]
+        _ = [a.set_visible(not self._hide_current_points) for k, a in artist_dict.items() if k in ['index', 'sel', 'man']]
 
     def thin_event(self, event):
-        print("thinning not currently implemented")
-        pass
+        #print("thinning not currently implemented")
+        self._thinning = not self._thinning
+        print("Thinning enabled" if self._thinning else "Thinning disabled")
+
+        #new_spec_data_list = [data[::self.thinning_factor] if self._thinning else data for data in self._spec_data_list]
+
+        self._update_all(self._spec_data_list, self._index_data_list)
 
     def invalid_key_event(self, event):
         print(f"Invalid key pressed: {event.key}")
@@ -609,6 +661,16 @@ class InteractiveNormalisation:
             raise ValueError("n_plot must be an odd integer greater than 1")
         self._n_plots = new_n_plot
         self._n_ghosts = (new_n_plot - 1) // 2
+
+    @property
+    def thinning_factor(self):
+        return self._thinning_factor
+    
+    @thinning_factor.setter
+    def thinning_factor(self, new_thinning_factor):
+        if new_thinning_factor < 2 or not isinstance(new_thinning_factor, int):
+            raise ValueError("thinning_factor must be an integer greater than 1")
+        self._thinning_factor = new_thinning_factor
 
     @property
     def n_ghosts(self):
