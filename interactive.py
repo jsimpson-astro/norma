@@ -102,8 +102,16 @@ class InteractiveNormalisation:
 
         self._fig, self._axes = fig, ax
         
+        self._hidden = [False] * (2 * self.n_ghosts + 1)
+        self._hide_ghosts = False
+        self._hide_ghost_points = False
+        self._hide_current_points = False
+
         self._initialise_plots()
+
         self._started = True
+        self._write_on_exit = [0]
+
         # wait in loop
         plt.show(block=False)
         print(self._help_str)
@@ -112,6 +120,9 @@ class InteractiveNormalisation:
         	prompt = input("Press enter to quit: ")
         
         plt.close()
+
+        # need to write out current and all loaded/not written 
+        _=[self._write_single(rel_idx) for rel_idx in self._write_on_exit]
 
     
     def _initialise_plots(self):
@@ -184,8 +195,7 @@ class InteractiveNormalisation:
         self._index_data_list = index_data_list + below_index_data_list[::-1]
         self._artist_list = artist_list + below_artist_list[::-1]
 
-        # setup hidden
-        self._hidden = [False] * (2 * self.n_ghosts + 1)
+        # hide those out of bounds
         for rel_idx in above_to_hide + below_to_hide:
             self._hide_single(rel_idx)
 
@@ -358,15 +368,9 @@ class InteractiveNormalisation:
         
         new_spec_data_list = [None] * len(rel_idxs)
         new_index_data_list = [None] * len(rel_idxs)
-
-        #_index_list = ['test'] * len(rel_idxs)
-        #_rel_map = {}
-
-        #print(rel_idxs)
-        #print(inv_rel_idx_map)
-        #print(new_rel_idx_map)
-        #print([inv_rel_idx_map.get(new_rel_idx_map[idx]) for idx in rel_idxs])
         
+        write_on_exit = []
+
         for idx in rel_idxs:
             # new absolute index from map
             new_idx = new_rel_idx_map[idx]
@@ -374,20 +378,19 @@ class InteractiveNormalisation:
             cur_rel_idx = inv_rel_idx_map.get(new_idx)
             # load data if required, else get it
             spec_data, index_data =  self._read_single(new_idx) if cur_rel_idx is None else (self._spec_data_list[cur_rel_idx], self._index_data_list[cur_rel_idx])
-            #spec_data, index_data = cur_rel_idx) if cur_rel_idx else (*self.read_single(new_idx), None)
-            #_index_list[idx] = f"current: {cur_rel_idx}, new: {new_idx}"
-
-            #_rel_map[idx] = cur_rel_idx
             
             new_spec_data_list[idx] = spec_data
             new_index_data_list[idx] = index_data
 
-        #print('debug', _index_list)
-        #print('debug', _rel_map)
+            if cur_rel_idx is not None:
+                write_on_exit.append(idx)
         
         # write out
         to_write = [rel_idx for rel_idx, idx in rel_idx_map.items() if idx not in new_rel_idx_map.values()]
         _ = [self._write_single(rel_idx) for rel_idx in to_write]
+
+        # keep track of loaded files that haven't been written out yet
+        self._write_on_exit = write_on_exit
 
         # update plots with data
         self._update_all(new_spec_data_list, new_index_data_list)
@@ -410,28 +413,19 @@ class InteractiveNormalisation:
         """
         Change visibility of a spectrum's artists using relative indexing
         """
-        spec_data, index_data, artist_dict = self._get_rel(rel_idx)
-
         # only update if needed
         if hide != self._hidden[rel_idx]:
-            [a.set_visible(not hide) for a in artist_dict.values()]
-            self._hidden[rel_idx] = hide
+            spec_data, index_data, artist_dict = self._get_rel(rel_idx)
+            # if hide ghosts is on, only show if it is current
+            if self._hide_ghosts:
+                if rel_idx == 0:
+                    [a.set_visible(not hide) for a in artist_dict.values()]
+            else:
+                [a.set_visible(not hide) for a in artist_dict.values()]
         else:
             pass
 
-    def _hide_points(self, rel_idx: int, hide_points=True):
-        """
-        Change the visibility of a spectrum's points using relative indexing
-        """
-        spec_data, index_data, artist_dict = self._get_rel(rel_idx)
-        raise NotImplementedError
-
-        # # only update if needed
-        # if hide != self.hidden[rel_idx]:
-        #     [a.set_visible(hide) for a in artist_dict.values()]
-        #     self.hidden[rel_idx] = hide
-        # else:
-        #     pass
+        self._hidden[rel_idx] = hide
 
     def _get_closest(
         self, 
@@ -563,15 +557,24 @@ class InteractiveNormalisation:
         self._update_single(*self._get_rel(0), adjust=True)
 
     def hide_ghosts_event(self, event):
-        pass
+        self._hide_ghosts = not self._hide_ghosts
+        # relative indices of ghosts e.g. (-2, -1, +1, +2)
+        ghost_rel_idxs = [i for i in range(-self.n_ghosts, 0)] + [i for i in range(1, self.n_ghosts + 1)]
+
+        # find ghosts that are not already hidden
+        ghost_artist_list = [self._artist_list[rel_idx] for rel_idx in ghost_rel_idxs if not self._hidden[rel_idx]]
+
+        # swap the visibility of these
+        _ = [a.set_visible(not self._hide_ghosts) for d in ghost_artist_list for a in d.values()]
 
     def hide_ghost_points_event(self, event):
-        pass
+        self._hide_ghost_points = not self._hide_ghost_points
 
     def hide_current_points_event(self, event):
-        pass
+        self._hide_current_points = not self._hide_current_points
 
     def thin_event(self, event):
+        print("thinning not currently implemented")
         pass
 
     def invalid_key_event(self, event):
