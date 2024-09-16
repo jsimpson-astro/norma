@@ -7,7 +7,6 @@ from .utils import *
 def find_max(
     wvs: np.ndarray,
     flux: np.ndarray,
-    flux_err: np.ndarray | None = None,
     **kwargs
     ) -> tuple[np.ndarray[int], np.ndarray[bool]]:
     """
@@ -20,8 +19,6 @@ def find_max(
         Wavelengths of spectrum
     flux: np.ndarray
         Fluxes of spectrum, same length as `wvs`
-    flux_err: optional, np.ndarray
-        Flux errors of spectrum, same length as `wvs` and `flux`
 
     Returns
     -------
@@ -78,13 +75,13 @@ def find_max(
     maxima_window: int, default: 7
         Half-window size to search for local maxima - lower values = less anchor points.
 
-    smoothing_kernel: {`rectangular`, `gaussian`, `savgol`, `erf`, `hat_exp`}, default: `savgol`
+    smoothing_kernel: {`rectangular`, `gaussian`, `savgol`, `erf`, `hat_exp`}, default: `rectangular`
         Kernel to use for smoothing of spectrum.
         
     smoothing_width: float, optional
         Half-width of smoothing kernel. 
         Rounded to nearest integer and used a window if smoothing_kernel is `rectangular`, `gaussian`, or `savgol`.
-        For these kernels, the default value is 6.
+        For these kernels, the default value is 6. Must be larger than 2 for the `savgol` kernel.
         
         Used as half-width half-maximum (= FWHM / 2) if smoothing_kernel is `erf` or `hat_exp`. 
         For these kernels, the default value is the value of `vfwhm`.
@@ -100,8 +97,8 @@ def find_max(
     denoising_width: int, default: 5
         Half-window size to average points around local maxima to form the continuuum.
 
-    edge_cut: bool, default: True
-        Trim edges of continuum fit back one point for stability.
+    edge_fix: bool, default: True
+        Always select the first and last local maxima.
 
     clip_cosmics: bool, default: False
         Enable cosmic-ray cleaning step using sigma-clipping.
@@ -120,37 +117,6 @@ def find_max(
         Mask to apply to spectrum during calculation of `vfwhm`.
         Defaults to 'master' in rassine - need to evaluate what this is and if it is useful.
         Temporarily ignoring in the meantime.
-
-
-    Parameter conversions
-    ---------------------
-    vfwhm = par_fwhm_
-    min_radius = par_R_
-    max_radius = par_Rmax_
-    pr_func = par_reg_nu 
-    pr_func_params = par_reg_nu 
-    stretching = par_stretching
-    auto_stretching_tightness = par_stretching.ratio
-    maxima_window = par_vicinity
-    smoothing_kernel = par_smoothing_kernel
-    smoothing_width = par_smoothing_box AND par_fwhm
-    telluric_mask = mask_telluric
-    synthetic = synthetic_spectrum
-    edge_cut = count_cut_lim
-    UNUSED = count_out_lim
-
-    Returns:
-        The processed result
-        
-        Modified by JS with following kwargs:
-        cr_clean_iters: int, default 5 - number of cosmic clipping iterations to run
-        penalty_win_small: int, default 10 - small window for penalty map computation
-        penalty_win_large: int, default 100 - large window for penalty map computation
-        cr_peak_removal: bool, default True - removal of cosmic peaks
-        save_maxima: bool, default False - save local maxima before masking and rolling applied
-        plot_penalty: bool, default False - plot penalty radius law
-        save_penalty: bool, default False - save penalty law to output pickle
-        
         
     """
     # get params and check
@@ -184,7 +150,7 @@ def find_max(
     default_smoothing_width = {'rectangular': 6., 'gaussian': 6., 'savgol': 6., 
                                'erf': vfwhm, 'hat_exp': vfwhm}
     
-    smoothing_kernel = kwargs.get('smoothing_kernel', 'savgol')
+    smoothing_kernel = kwargs.get('smoothing_kernel', 'rectangular')
     if smoothing_kernel not in smoothing_kernels:
         raise ValueError(f"Invalid smoothing_kernel given: {smoothing_kernel}. Valid choices are {smoothing_kernels}.")
 
@@ -206,7 +172,7 @@ def find_max(
     synthetic = kwargs.get('synthetic', False)
 
     denoising_width = kwargs.get('denoising_width', 5)
-    edge_cut = kwargs.get('edge_cut', True)
+    edge_fix = kwargs.get('edge_fix', True)
     clip_cosmics = kwargs.get('clip_cosmics', False)
     clip_iters = kwargs.get('clip_iters', 5)
     clean_cosmic_peaks = kwargs.get('clean_cosmic_peaks', False)
@@ -239,9 +205,8 @@ def find_max(
     #### make grid ####
     
     # debating the use of an equidistant grid
-    use_grid = True
     dgrid = dwv = (wvs.max() - wvs.min()) / wvs.size
-    if use_grid:
+    if kwargs.get('use_grid'):
         grid = np.linspace(wvs.min(), wvs.min() + (wvs.size - 1) * dwv,
                            wvs.size, dtype=np.float64)
     else:
@@ -318,7 +283,7 @@ def find_max(
     # compute vfwhm if needed
     out_of_calibration = False
     if vfwhm is None:
-        vfwhm, vfwhm_err = calculate_fwhm(wvs, flux_norm, telluric_mask)
+        vfwhm, vfwhm_err = calculate_fwhm(wvs, flux_norm, telluric_mask, plot_ccf=kwargs.get('plot_ccf', False))
         if wave_min * (vfwhm / 2.997e5) > 15:
             vfwhm = 2.997e5 * 15 / wave_min
             logging.warning("Star out of the FWHM calibration range - FWHM capped to 15 A.")
@@ -336,9 +301,10 @@ def find_max(
         if out_of_calibration:
             stretching = 7.0
         else:
-            calib_low = np.polyval([-0.08769286, 5.90699857], vfwhm)
-            calib_high = np.polyval([-0.38532535, 20.17699949], vfwhm)
+            calib_low = np.polyval([-0.08769286, 5.90699857], fwhm)
+            calib_high = np.polyval([-0.38532535, 20.17699949], fwhm)
             stretching = calib_low + (calib_high - calib_low) * auto_stretching_tightness
+            #print('stretching:', stretching)
 
     if smoothing_kernel in {'erf', 'hat_exp'}:
         raise NotImplementedError
@@ -478,18 +444,13 @@ def find_max(
     _maxima_wvs = maxima_wvs.copy()
     _maxima_idxs = maxima_idxs.copy()
 
-    # =============================================================================
-    #  PENALITY
-    # =============================================================================
+    #### calculate penalty ####
 
-    # general parameters for the algorithm
-    # (no need to modify the values except if you are visually unsatisfied of the penality plot)
-    # iteration increase the upper zone of the penality top
     min_radius = min(5., 10 * fwhm) if min_radius is None else min_radius
     
     if out_of_calibration:
         narrow_win = 2.0  # 2 typical line width scale (small window for the first continuum)
-        broad_win = 20.0  # 20typical line width scale (large window for the second continuum)
+        broad_win = 20.0  # 20 typical line width scale (large window for the second continuum)
     else:
         narrow_win = 10.0  # 10 typical line width scale (small window for the first continuum)
         broad_win = 100.0  # 100 typical line width scale (large window for the second continuum)
@@ -507,6 +468,11 @@ def find_max(
     # this gives a statistic that increases in large absorption features
     # which is used to scale the radius of the rolling pin
     dx = fwhm / np.median(np.diff(grid))
+
+    # ensure dx*window is always more than one
+    dx = 1 / narrow_win if dx * narrow_win < 1 else dx
+
+    #print(f"converted fwhm: {fwhm:.4f} A. dx = {dx:.4f}, windows = {narrow_win}, {broad_win}")
     
     if max_radius is None:
         penalty, max_radius = compute_penalty(grid, 
@@ -520,11 +486,16 @@ def find_max(
         # failed to calculate max_radius
         # this logic seems a bit strange
         if max_radius is None:
-            max_radius = 5 * min_radius if out_of_calibration else min_radius
+            #print('Failed to calculate max_radius')
+            #max_radius = 5 * min_radius if out_of_calibration else min_radius
+            #max_radius = 5 * min_radius
+            max_radius = max(150, 5 * min_radius)
     else:
         penalty = compute_penalty(grid, flux_norm, dx, narrow_win=narrow_win, broad_win=broad_win)
         
     penalty_adj = penalty.copy()
+
+    #print(f"Minimum radius: {min_radius:.3f} A. Maximum radius: {max_radius:.3f} A.")
     
     # this broadens the size of each penalty peak slightly
     for i in range(iterations):
@@ -560,9 +531,7 @@ def find_max(
     else:
         raise ValueError(f"Invalid pr_func: {pr_func}.")
 
-    # =============================================================================
-    #  ROLLING PIN
-    # =============================================================================
+    #### rolling pin selection ####
     
     # apply one threshold scaling before
     maxima_radii[0] = maxima_radii[0] / 1.5
@@ -611,14 +580,13 @@ def find_max(
         keep.append(j)
     
     # local maxima selected by rolling pin
-    maxima_fluxes_sel = maxima_fluxes[keep]
-    maxima_wvs_sel = maxima_wvs[keep]
-    maxima_idxs_sel = maxima_idxs[keep]
+    #maxima_fluxes_sel = maxima_fluxes[keep]
+    #maxima_wvs_sel = maxima_wvs[keep]
+    #maxima_idxs_sel = maxima_idxs[keep]
 
-    # cut one element from edges if needed
-    if edge_cut:
-        maxima_fluxes_sel[0] = maxima_fluxes_sel[1]
-        maxima_fluxes_sel[-1] = maxima_fluxes_sel[-2]
+    if edge_fix:
+        keep = [0] + keep
+        keep = keep + [maxima_idxs.size - 1]
     
     # # CAII MASKING
     # mask_caii = ((wave > 3929) & (wave < 3937)) | ((wave > 3964) & (wave < 3972))
@@ -629,7 +597,9 @@ def find_max(
     # return maxima wavelengths and fluxes
     # also return all the indices, and if they are selected
     selected = np.isin(np.arange(maxima_idxs.size), keep)
-    spectrum_out = np.vstack((maxima_wvs, maxima_fluxes * norm)).T
-    indices_out = np.vstack((maxima_idxs, selected)).T
-
-    return maxima_idxs, selected
+    #spectrum_out = np.vstack((maxima_wvs, maxima_fluxes * norm)).T
+    #indices_out = np.vstack((maxima_idxs, selected)).T
+    if kwargs.get('return_penalty'):
+        return maxima_idxs, selected, grid, penalty_norm, maxima_wvs, maxima_radii
+    else:
+        return maxima_idxs, selected
