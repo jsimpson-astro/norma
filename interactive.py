@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
+from norma.io import write_index_file, read_index_file
+
 class InteractiveNorma:
     """
     """
@@ -16,10 +18,6 @@ class InteractiveNorma:
         "z - ghost points\tw - current points\n"
         "Press enter or q to quit\n"
         )
-    
-    # numpy setup for read/write of index files
-    _index_dtypes = [('wvs', 'float'), ('flux', 'float'), ('index', 'int'), ('sel', 'bool')]
-    _index_fmts = ['%3.9f', '%.18e', '%i', '%i']
     
     # matplotlib axes.plot arguments for current spectrum
     current_plot_params = dict(
@@ -365,10 +363,7 @@ class InteractiveNorma:
         index_file = self._index_files[index]
 
         index_data = self._index_data_list[rel_idx]
-        
-        index_data = index_data[index_data['wvs'].argsort()]
-        
-        np.savetxt(index_file, index_data, fmt=self._index_fmts)
+        write_index_file(index_file, index_data)
 
     def _read_single(self, index: int) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -378,7 +373,7 @@ class InteractiveNorma:
         index_file = self._index_files[index]
 
         spec_data = np.loadtxt(spec_file)
-        index_data = np.loadtxt(index_file, dtype=self._index_dtypes)
+        index_data = read_index_file(index_file)
         
         return spec_data, index_data
 
