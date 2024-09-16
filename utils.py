@@ -123,7 +123,8 @@ def offset_gaus(xs, centre, fwhm, height, offset=1):
 def calculate_fwhm(
     wvs: np.ndarray, 
     flux: np.ndarray,
-    telluric_mask: list[tuple[float, float]] | None = None
+    telluric_mask: list[tuple[float, float]] | None = None,
+    **kwargs
     ) -> tuple[float, float]:
     """
     Calculate the velocity resolution of a spectrum using scipy.signal.correlate.
@@ -179,8 +180,6 @@ def calculate_fwhm(
 
     #### end of ccf mask ####
     
-    # fig, ax = plt.subplots(figsize=(12, 5))
-    
     # vrad, ccf = ccf_fun(log_wvs, log_flux, log_mask, extended=500)
 
     # ccf = ccf[vrad.argsort()]
@@ -203,20 +202,29 @@ def calculate_fwhm(
     ccf = correlate(log_flux, np.r_[np.zeros(extend), log_mask, np.zeros(extend)], mode='valid')
     ccf = ccf / np.median(ccf)
 
+    p0 = (xcor_velocities[ccf.argmin()], 1000., ccf.min()-1, np.median(ccf))
+
     # fit gaussian to ccf
-    popt, pcov = curve_fit(offset_gaus, xcor_velocities, ccf, p0=[0, 100, -0.5, 1.0], maxfev=100000)
+    popt, pcov = curve_fit(offset_gaus, xcor_velocities, ccf, p0=p0, maxfev=100000)
     # errors from diagonal of covariance matrix
     perrors = np.sqrt(np.diag(pcov))
-
-    # ax.plot(xcor_velocities, ccf, color='r', lw=1)
-    # ax.plot(xcor_velocities, offset_gaus(xcor_velocities, *popt), color='r', lw=1, ls='--')
 
     # scale sigma of gaussian by 2 sqrt(2 ln 2)
     sig2fwhm = 2**1.5 * np.log(2)**0.5
     fwhm, fwhm_error = popt[1] * sig2fwhm, perrors[1] * sig2fwhm
 
     if fwhm_error/fwhm > 0.2:
-        logging.warning(f"FWHM CCF error large: fwhm = {fwhm} +/- {fwhm_error} km/s.")
+        logging.warning(f"FWHM CCF error large: vfwhm = {fwhm:.3f} +/- {fwhm_error:.3f} km/s.")
+
+    if kwargs.get('plot_ccf'):
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax.plot(xcor_velocities, ccf, color='r', lw=1)
+        ax.plot(xcor_velocities, offset_gaus(xcor_velocities, *popt), color='r', lw=1, ls='--')
+        ax.set_title(f"vfwhm = {fwhm:.3f} +/- {fwhm_error:.3f} km/s, offset = {popt[0]:.3f} km/s")
+
+        plt.show(block=False)
     
     return fwhm, fwhm_error
 
