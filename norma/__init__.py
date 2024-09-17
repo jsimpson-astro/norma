@@ -1,5 +1,6 @@
 from .core import find_max
 from .interactive import InteractiveNorma
+from .utils import normalise
 
 import importlib.metadata
 
