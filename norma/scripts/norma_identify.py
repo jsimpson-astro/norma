@@ -8,6 +8,7 @@ import argparse
 
 import numpy as np
 from tqdm import tqdm
+from scipy.interpolate import interp1d
 
 from norma import find_max
 from norma.io import write_index_file, assemble_index_array
@@ -242,7 +243,7 @@ def main():
 
 		spec_data = np.loadtxt(in_f)
 
-		if plot_diagnostics:
+		if plot_diagnostics and plot_on_exit:
 			index_data, penalty, radius = find_max(spec_data[:, 0], spec_data[:, 1], **kwargs, return_penalty=True)	
 		else:
 			index_data = find_max(spec_data[:, 0], spec_data[:, 1], **kwargs)
