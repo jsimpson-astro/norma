@@ -33,7 +33,7 @@ def assemble_index_array(
 		raise IndexError("index and sel must have equal sizes.")
 	index_data = np.zeros(index.size, dtype=_index_dtypes)
 	index_data['wvs'] = wvs[index]
-	index_data['flux'] = flux[locmax]
+	index_data['flux'] = flux[index]
 	index_data['index'] = index
 	index_data['sel'] = sel
 	return index_data
