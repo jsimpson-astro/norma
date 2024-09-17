@@ -17,7 +17,7 @@ def read_index_file(file: str) -> np.ndarray:
 	"""
 	return np.loadtxt(file, dtype=_index_dtypes)
 
-def assemble_index_record(
+def assemble_index_array(
 	wvs: np.ndarray[float], 
 	flux: np.ndarray[float], 
 	index: np.ndarray[int], 
