@@ -27,7 +27,7 @@ def main():
 		f"Normalised spectra will be output to the same filenames with the extension `{out_suf}`."
 		)
 
-	parser = argparse.ArgumentParser(prog="norma_identify",
+	parser = argparse.ArgumentParser(prog="norma-identify",
 									 description=desc,
 									 epilog=epilog)
 
