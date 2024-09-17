@@ -257,7 +257,7 @@ def main():
 		norm_spec_data = spec_data.copy()
 		norm_spec_data[:, 1] = spec_data[:, 1] / cont
 
-		np.savetxt(out_files[i], spec_data)
+		np.savetxt(out_files[i], norm_spec_data)
 
 		if plot_on_exit:
 			
