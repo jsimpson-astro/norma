@@ -21,6 +21,25 @@ __all__ = [
     'clip'
     ]
 
+def normalise(
+    wvs: np.ndarray,
+    flux: np.ndarray,
+    index_array: np.ndarray
+    ) -> np.ndarray:
+    """
+    Normalise a spectrum using an index structured array.
+    See also norma.io.assemble_index_array to convert norma.find_max outputs.
+    Returns the flux divided by a continuum fit through the selected points
+    """
+    sel = index_array['sel']
+    # normalise with cubic interpolation
+    interp = interp1d(index_array['wvs'][sel], index_array['flux'][sel], 
+                      kind='cubic', bounds_error=False, fill_value='extrapolate')
+    cont = interp(wvs)
+    flux_norm = flux / cont
+
+    return flux_norm
+
 def rolling_quantile(
     x: np.ndarray, 
     window: int, 
