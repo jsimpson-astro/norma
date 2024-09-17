@@ -63,7 +63,7 @@ def find_max(
     
     stretching: float, optional
         Stretch to apply to wavelength axis before normalisation.
-        Determines the `tightness` of the continuum fit - lower values = tighter fit.
+        Determines the `tightness` of the continuum fit - higher values = tighter fit.
         If not given, automatically determined using `vfwhm`.
         
     auto_stretching_tightness: float, default: 0.5
@@ -426,7 +426,7 @@ def find_max(
         #IQ = np.ravel(pd.DataFrame(maxima_fluxes).rolling(10, center=True).quantile(0.75)) - median
         IQ[np.isnan(IQ)] = flux_norm.max()
         median[np.isnan(median)] = flux_norm.max()
-        mask = flux > median + 20 * IQ
+        mask = maxima_fluxes > median + 20 * IQ
         if np.sum(mask) > 0:
             print(f" Cosmic peaks removed : {np.sum(mask):.0f}")
         
