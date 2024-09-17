@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
 _default_plot_param_dict = {
-	'spec': {'color': '#074517', 'alpha': 0.3},
-	'cont': {'color': '#0d7a2a'},
-	'index': {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-	'sel': {'color': '#09521c', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
-	'man':  {'color': '#12cc43', 'marker': 'D', 'linestyle': 'None', 'markersize': 7}
+	'spec': {'color': 'k', 'alpha': 0.4, 'linewidth': 1},
+	'cont': {'color': 'r'},
+	'index': {'color': 'k', 'alpha': 0.6, 'marker': 'o', 'linestyle': 'None', 'markersize': 3},
+	'sel': {'color': '#09521c', 'marker': 'o', 'linestyle': 'None', 'markersize': 4},
+	'man':  {'color': '#12cc43', 'marker': 'D', 'linestyle': 'None', 'markersize': 5}
 	}
 
 _plot_keys = set(_default_plot_param_dict.keys())
@@ -78,7 +78,7 @@ def plot_output(
 	artist_dict['norm_spec'], = axes[1].plot(wvs, norm_flux, **plot_params['norm_spec'])
 	artist_dict['norm_index'], = axes[1].plot(wvs[locmax], flux[locmax] / cont[locmax], zorder=3, **plot_params['norm_index'])
 	artist_dict['norm_sel'], = axes[1].plot(wvs[locmax[sel]], flux[locmax[sel]] / cont[locmax[sel]], zorder=5,  **plot_params['norm_sel'])
-	artist_dict['norm_man'], = axes[1].plot(man_wvs, man_flux / cont[locmax[man_mask]], zorder=6, **plot_params['norm_man'])
+	artist_dict['norm_man'], = axes[1].plot(man_wvs, man_flux / interp(man_wvs), zorder=6, **plot_params['norm_man'])
 	artist_dict['norm_cont'], = axes[1].plot([wvs.min(), wvs.max()], [1, 1], zorder=4, **plot_params['norm_cont'])
 
 	if _return_artists:

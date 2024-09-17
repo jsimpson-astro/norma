@@ -168,7 +168,7 @@ def main():
 					'norm_spec': norm_spec_data[:, :2],
 					'norm_index': np.c_[data_dict['index'][:, 0], data_dict['index'][:, 1] / cont[index_data['index']]],
 					'norm_sel': np.c_[data_dict['sel'][:, 0], data_dict['sel'][:, 1] / cont[index_data['index'][sel]]],
-					'norm_man': np.c_[data_dict['man'][:, 0], data_dict['man'][:, 1] / cont[index_data['index'][man_mask]]],
+					'norm_man': np.c_[data_dict['man'][:, 0], data_dict['man'][:, 1] / interp(data_dict['man'][:, 0])],
 					'norm_cont': np.array([(wv_min, 1.), (wv_max, 1.)])
 					}
 
