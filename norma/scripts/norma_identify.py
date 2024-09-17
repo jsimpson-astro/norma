@@ -36,7 +36,7 @@ def main():
 	                    nargs='+',
 						help=f"Paths to spectra files. Index files will be created with the same names with the extension `{index_suf}`")
 
-	parser.add_argument('--vfwhm',
+	parser.add_argument('-v', '--vfwhm',
 						type=float,
 						help="FWHM of spectrum in km/s. Automatically determined if not provided.")
 
@@ -170,7 +170,7 @@ def main():
 	# remove unspecified kwargs, find_max will fill in defaults
 	kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
-	print("Input parameters:"
+	print("Input parameters:\n"
 		  "-----------------")
 	for k, v in kwargs.items():
 		print(f"  {k}: {v}")
