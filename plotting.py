@@ -52,7 +52,7 @@ def plot_output(
 	# setup figure
 	artist_dict = {}
 	fig, axes = plt.subplots(figsize=(15, 7), nrows=2, sharex=True)
-	fig.subplots_adjust(left=0.07, right=0.96, hspace=0, top=0.95)
+	fig.subplots_adjust(left=0.04, right=0.98, top=0.95, bottom=0.1, hspace=0.05)
 
 	# set labels, title
 	axes[-1].set_xlabel("Wavelength ($\mathrm{\AA}$)", fontsize=14)
@@ -69,11 +69,11 @@ def plot_output(
 	cont = interp(wvs)
 	norm_flux = flux / cont
 
-	artist_dict['spec'], = axes[0].plot(wvs, flux, **plot_params['spec'])
-	artist_dict['index'], = axes[0].plot(wvs[locmax], flux[locmax], zorder=3, **plot_params['index'])
-	artist_dict['sel'], = axes[0].plot(wvs[locmax[sel]], flux[locmax[sel]], zorder=5, **plot_params['sel'])
-	artist_dict['man'], = axes[0].plot(man_wvs, man_flux, zorder=6, **plot_params['man'])
-	artist_dict['cont'], = axes[0].plot(wvs, cont, zorder=4, **plot_params['cont'])
+	artist_dict['spec'], = axes[0].plot(wvs, flux, **plot_params['spec'], label='Spectrum')
+	artist_dict['index'], = axes[0].plot(wvs[locmax], flux[locmax], zorder=3, **plot_params['index'], label='Local max')
+	artist_dict['sel'], = axes[0].plot(wvs[locmax[sel]], flux[locmax[sel]], zorder=5, **plot_params['sel'], label='Selected')
+	artist_dict['man'], = axes[0].plot(man_wvs, man_flux, zorder=6, **plot_params['man'], label='Manual')
+	artist_dict['cont'], = axes[0].plot(wvs, cont, zorder=4, **plot_params['cont'], label='Fit')
 
 	artist_dict['norm_spec'], = axes[1].plot(wvs, norm_flux, **plot_params['norm_spec'])
 	artist_dict['norm_index'], = axes[1].plot(wvs[locmax], flux[locmax] / cont[locmax], zorder=3, **plot_params['norm_index'])
