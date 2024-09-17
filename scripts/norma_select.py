@@ -23,11 +23,11 @@ def main():
 	out_suf = '.out'
 	plot_suf = '.png'
 
-	desc = "Interactively edit local maxima from spectra using outputs from fitter.find_max"
+	desc = "Interactively edit local maxima from spectra using outputs from norma_identify."
 	epilog = (
-		f"Index files should have the same names as their corresponding spectrum, but with the suffix `{index_suf}`."
+		f"Index files should have the same names as their corresponding spectrum, but with the extension `{index_suf}`."
 		"Index files will be updated in-place during editing."
-		f"Normalised spectra will be output to the same filenames with `{out_suf}` appended."
+		f"Normalised spectra will be output to the same filenames with the extension `{out_suf}`."
 		)
 
 	parser = argparse.ArgumentParser(prog="norma_select",
@@ -36,7 +36,7 @@ def main():
 
 	parser.add_argument('spec_files',
 	                    nargs='+',
-						help=f"Paths to spectra files. Index files should have the same paths with the suffix `{index_suf}`")
+						help=f"Paths to spectra files. Index files should have the same paths with the extension `{index_suf}`")
 	parser.add_argument('-n', '--number',
 						default=3,
 						help="number of spectra to plot at once, must be >= 1 (default: 3)")
@@ -107,7 +107,7 @@ def main():
 		spec_data = np.loadtxt(spec_files[0])
 		index_data = read_index_file(index_files[0])
 
-		out_plot_params = plot_params['out']
+		out_plot_params = plot_params['current'] | plot_params['out']
 		fig, axes, artist_dict = plot_output(spec_data[:, 0], spec_data[:, 1], index_data, 
 											 _plot_param_dict=out_plot_params, _return_artists=True)
 
@@ -116,8 +116,13 @@ def main():
 		# setup colours to match 
 		base_plot_params = plot_params['base']
 
+		handles = [artist_dict[k] for k in out_plot_params.keys()]
+		legend = axes[-1].legend(handles=handles, labelcolor=base_plot_params['text_color'], loc='lower right')
+
 		fig.set_facecolor(base_plot_params['fig_facecolor'])
 		axes[0].title.set_color(base_plot_params['text_color'])
+
+		legend.get_frame().set_facecolor(base_plot_params['axes_facecolor'])
 
 		for ax in axes:
 			ax.set_facecolor(base_plot_params['axes_facecolor'])
@@ -145,7 +150,7 @@ def main():
 			norm_spec_data = spec_data.copy()
 			norm_spec_data[:, 1] = spec_data[:, 1] / cont
 
-			np.savetxt(out_f, spec_data)
+			np.savetxt(out_f, norm_spec_data)
 
 			if plot_on_exit:
 				fig_f = fig_files[i]
