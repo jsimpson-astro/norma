@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
-from norma.io import write_index_file, read_index_file
+from norma.io import write_index_file, read_index_file, _index_dtypes
 
 class InteractiveNorma:
     """
@@ -80,7 +80,7 @@ class InteractiveNorma:
         self._started = False
         
         # check all files
-        if not len(spec_files) == len(index_files):
+        if len(spec_files) != len(index_files):
             raise IndexError("Lengths of spec_files and index_files do not match.")
         
         missing_files = [f for f in spec_files + index_files if not os.path.isfile(f)]
@@ -106,7 +106,7 @@ class InteractiveNorma:
         """
         if fig is None or ax is None:
             fig, ax = plt.subplots(figsize=(16, 6))
-            fig.subplots_adjust(left=0.07,right=0.96,hspace=0,top=0.95)
+            fig.subplots_adjust(left=0.07, right=0.96, hspace=0, top=0.95)
         else:
             ax.clear()
         
@@ -143,8 +143,8 @@ class InteractiveNorma:
         """
         fig, ax = self._fig, self._axes
         
-        ax.set_xlabel(r'Wavelength ($\AA$)', fontsize=14)
-        ax.set_ylabel('Flux (arb. unit)', fontsize=14)
+        ax.set_xlabel("Wavelength ($\mathrm{\AA}$)", fontsize=14)
+        ax.set_ylabel("Flux (arb. unit)", fontsize=14)
         ax.set_title(f"Spectrum {self.current_index + 1} - {self._spec_files[self.current_index]}")
 
         # performance improvements?
@@ -579,7 +579,7 @@ class InteractiveNorma:
         """
         Adds a manual point at the event location
         """
-        entry = np.array((event.xdata, event.ydata, -1, True), dtype=self._index_dtypes)
+        entry = np.array((event.xdata, event.ydata, -1, True), dtype=_index_dtypes)
         insert_idx = np.searchsorted(self._index_data_list[0]['wvs'], event.xdata)
         self._index_data_list[0] = np.insert(self._index_data_list[0], insert_idx, entry)
 
