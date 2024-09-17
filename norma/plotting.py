@@ -26,9 +26,32 @@ def plot_output(
 	) -> tuple[plt.Figure, plt.Axes] | tuple[plt.Figure, plt.Axes, dict]:
 	"""
 	Plot spectra continuum fit and normalised spectrum using an `index_array` from find_max.
-	`_plot_param_dict` and `_return_artists` are intended for advanced internal use.
 	Returns the created figure and axes.
-	Also returns a dictionary of artists if `_return_artists` is True.
+
+	Parameters
+    ----------
+    wvs: np.ndarray
+        Wavelengths of spectrum
+
+    flux: np.ndarray
+        Fluxes of spectrum, same length as `wvs`
+
+    index_array: structured np.ndarray of float, float, int, bool
+        An index_array, as output by the command-line method `norma-identify`,
+        or output by `norma.find_max`, and then saved with `norma.io.write_index_file`.
+
+    Returns
+    -------
+    fig: matplotlib.figure.Figure
+    	Figure instance created for plotting
+
+    axes: np.ndarray of matplotlib.axes.AxesSubplot
+    	Array of two AxesSubplots, first for the fit spectrum, 
+    	second for the normalised spectrum.
+
+	`_plot_param_dict` and `_return_artists` are intended for advanced internal use.
+	If `_return_artists` is True, also returns a dictionary of artists from plotting.
+
 	"""
 	plot_params = _default_plot_param_dict if _plot_param_dict is None else _plot_param_dict
 

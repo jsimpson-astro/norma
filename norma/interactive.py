@@ -7,8 +7,7 @@ from norma.io import write_index_file, read_index_file, _index_dtypes
 from norma.plotting import plot_styles
 
 class InteractiveNorma:
-    """
-    """
+
     _help_str = (
         "Maxima modification:\n"
         "Current spectrum shown in green\n"
@@ -40,6 +39,49 @@ class InteractiveNorma:
         thinning_factor: int = 10,
         wrap: bool = False
         ):
+        """
+        Interactive normalisation class. 
+        Operates on files output by norma-identify/find_max.
+
+        Begin interactive reduction with self.start().
+
+        Parameters
+        ----------
+        spec_files: list
+            List of paths to spectra files.
+            Individual spectra should have wavelengths in angstroms as the first column,
+            and flux (in any unit) in the second. Other columns are unused.
+
+        index_files: list
+            List of paths to index files, same length as spec_files.
+            Index files are output by the command-line method `norma-identify`.
+            Index arrays are output by `norma.find_max`, and then 
+            can be saved with `norma.io.write_index_file`.
+            Index files will be updated in-place while running the programme.
+
+        Other parameters
+        ----------------
+        start_index: int, default: 0
+            The index of the spectrum to plot first.
+
+        n_plot: int, default: 3
+            The number of spectra to plot at once, including the current spectrum
+            and any spectra `ghosts` - i.e. outlines of spectra above and below the current.
+            Must be an odd integer greater than 1.
+            Note that spectra ghosts can be hidden while plotting with `x`.
+
+        thinning_factor: int, default: 10
+            The thinning factor to use to simplify spectra.
+            Must be an integer greater than 1.
+            Enabled thinning while plotting with `t`.
+
+        wrap: bool, default: False
+            Enable wrap-around while plotting.
+            If enabled, moving past the top or bottom of the spectra list will loop the
+            current spectrum back to the first or last spectrum, respectively.
+            If disabled, moving past the top or bottom of the spectra list is forbidden.
+
+        """
         
         self._on_press_dict = {
             'up': self.move_up_event,

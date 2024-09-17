@@ -18,6 +18,7 @@ def find_max(
     ----------
     wvs: np.ndarray
         Wavelengths of spectrum
+        
     flux: np.ndarray
         Fluxes of spectrum, same length as `wvs`
 
