@@ -2,7 +2,8 @@ import numpy as np
 from scipy.interpolate import interp1d
 import logging
 
-from .utils import *
+from norma.utils import *
+from norma.io import assemble_index_array
 
 def find_max(
     wvs: np.ndarray,
@@ -22,21 +23,17 @@ def find_max(
 
     Returns
     -------
-    maxima_idxs: np.ndarray of int
-        All identified maxima points along spectrum, as indices from wvs.
-    selected: np.ndarray of bool
-        Boolean mask of selected maxima points from `maxima_idxs`.
+    index_array: structured np.ndarray of float, float, int, bool
+        All identified maxima points along spectrum, as indexed from the original spectrum.
+        The structured array has 4 columns: `wvs` and `flux` for the wavelength and
+        flux of each point in the original spectrum, `index` for its index, and `sel`
+        which is a boolean mask indicating the selected points.
 
-    To normalise, take the selected indices sel = maxima_idxs[selected],
-    and interpolate over (wvs[sel], flux[sel]).
+    To normalise, use norma.utils.normalise with the input spectrum and output index_array:
+        norm_flux = norma.utils.normalise(wvs, flux, index_array)
 
-    For example, with scipy.interpolate.interp1d:
-
-        interp = interp1d(wvs[sel], flux[sel], kind='cubic', 
-                          bounds_error=False, fill_value='extrapolate')
-        fit = interp(wvs)
-        flux_norm = flux / fit
-    
+    The selected points in `index_array` will be interpolated over with a cubic spline,
+    and used to divide the spectrum's flux.
 
     Other parameters
     ----------------
@@ -94,9 +91,6 @@ def find_max(
     synthetic: bool, default: False
         If True, inject a small (0.01%) amount of noise into the spectrum for numerical stability.
 
-    denoising_width: int, default: 5
-        Half-window size to average points around local maxima to form the continuuum.
-
     edge_fix: bool, default: True
         Always select the first and last local maxima.
 
@@ -119,6 +113,10 @@ def find_max(
         Temporarily ignoring in the meantime.
         
     """
+    # old arg, currently unused:
+    #    denoising_width: int, default: 5
+    #       Half-window size to average points around local maxima to form the continuuum.
+    
     # get params and check
     vfwhm = kwargs.get('vfwhm', None)
     min_radius = kwargs.get('min_radius', None)
@@ -171,7 +169,7 @@ def find_max(
 
     synthetic = kwargs.get('synthetic', False)
 
-    denoising_width = kwargs.get('denoising_width', 5)
+    #denoising_width = kwargs.get('denoising_width', 5)
     edge_fix = kwargs.get('edge_fix', True)
     clip_cosmics = kwargs.get('clip_cosmics', False)
     clip_iters = kwargs.get('clip_iters', 5)
@@ -187,12 +185,12 @@ def find_max(
         'auto_stretching_tightness': auto_stretching_tightness,
         'maxima_window': maxima_window,
         'smoothing_width': smoothing_width,
-        'denoising_width': denoising_width,
+        #'denoising_width': denoising_width,
         'clip_iters': clip_iters
         }
     check_int_names = [
         'maxima_window',
-        'denoising_width',
+        #'denoising_width',
         'clip_iters'
         ]
     
@@ -594,12 +592,11 @@ def find_max(
     # flux = flux[~mask_caii]
     # index = index[~mask_caii]
     
-    # return maxima wavelengths and fluxes
-    # also return all the indices, and if they are selected
+    # assemble and return a structured index array
     selected = np.isin(np.arange(maxima_idxs.size), keep)
-    #spectrum_out = np.vstack((maxima_wvs, maxima_fluxes * norm)).T
-    #indices_out = np.vstack((maxima_idxs, selected)).T
+    index_array = assemble_index_array(wvs, flux, maxima_idxs, selected)
+
     if kwargs.get('return_penalty'):
-        return maxima_idxs, selected, grid, penalty_norm, maxima_wvs, maxima_radii
+        return index_array, penalty_norm, maxima_radii
     else:
-        return maxima_idxs, selected
+        return index_array
