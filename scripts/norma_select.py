@@ -13,6 +13,7 @@ from scipy.interpolate import interp1d
 
 from norma import InteractiveNorma
 from norma.io import read_index_file
+from norma.plotting import plot_output, plot_styles
 
 def main():
 	#### parse args ####
@@ -85,36 +86,14 @@ def main():
 
 	# set dark mode by changing params
 	if dark:
-		inorma.current_plot_params = dict(
-			spec_kws = {'color': '#6bff93', 'alpha': 0.8, 'linewidth': 1.5},
-			cont_kws = {'color': '#43fa74', 'linewidth': 1.5},
-			index_kws = {'color': 'white', 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-			sel_kws = {'color': '#ccffd9', 'marker': 'o', 'linestyle': 'none', 'markersize': 6},
-			man_kws = {'color': '#11f54d', 'marker': 'D', 'linestyle': 'none', 'markersize': 7}
-			)
-
-		inorma.above_plot_params = dict(
-			spec_kws={'color': '#30f1ff', 'alpha': 0.5, 'linewidth': 0.7},
-			cont_kws={'color': '#73f1fa', 'alpha': 0.6, 'linewidth': 0.7}, 
-			index_kws={'color': '#bffbff', 'alpha': 0.6, 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-			sel_kws={'color': '#30f1ff', 'alpha': 0.6, 'marker': 'o', 'linestyle': 'none', 'markersize': 3}, 
-			man_kws={'color': '#6df3fc', 'alpha': 0.6, 'marker': 'D', 'linestyle': 'none', 'markersize': 4},
-			)
-
-		inorma.below_plot_params = dict(
-			spec_kws={'color': '#f14efc', 'alpha': 0.5, 'linewidth': 0.7},
-			cont_kws={'color': '#fd80ff', 'alpha': 0.6, 'linewidth': 0.7}, 
-			index_kws={'color': '#fde0ff', 'alpha': 0.6, 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-			sel_kws={'color': '#cf30ff', 'alpha': 0.6, 'marker': 'o', 'linestyle': 'none', 'markersize': 3}, 
-			man_kws={'color': '#f76dfc', 'alpha': 0.6, 'marker': 'D', 'linestyle': 'none', 'markersize': 4}, 
-			)
-
-		inorma.base_plot_params = dict(
-			fig_facecolor='#111111',
-			axes_facecolor='#222222',
-			text_color='#ffffff',
-			axes_edgecolor='#ffffff'
-			)
+		plot_params = plot_styles['dark']
+	else:
+		plot_params = plot_styles['light']
+		
+	inorma.base_plot_params = plot_params['base']
+	inorma.current_plot_params = {k+'_kws': v for k, v in plot_params['current'].items()}
+	inorma.above_plot_params = {k+'_kws': v for k, v in plot_params['above'].items()}
+	inorma.below_plot_params = {k+'_kws': v for k, v in plot_params['below'].items()}
 
 	inorma.start()
 
@@ -127,24 +106,17 @@ def main():
 
 		spec_data = np.loadtxt(spec_files[0])
 		index_data = read_index_file(index_files[0])
-		fig, ax, artist_dict = plot_output(spec_data[:, 0], spec_data[:, 1], _plot_param_dict=plot_params, _return_artists=True)
 
-		# setup figure
-		artist_dict = {}
-		fig, axes = plt.subplots(figsize=(15, 7), nrows=2, sharex=True)
-		fig.subplots_adjust(left=0.07, right=0.96, hspace=0, top=0.95)
+		out_plot_params = plot_params['out']
+		fig, axes, artist_dict = plot_output(spec_data[:, 0], spec_data[:, 1], index_data, 
+											 _plot_param_dict=out_plot_params, _return_artists=True)
 
-		# set labels, title
-		axes[-1].set_xlabel("Wavelength ($\mathrm{\AA}$)", fontsize=14)
-		axes[0].set_ylabel("Flux (arb. unit)", fontsize=14)
-		axes[-1].set_ylabel("Normalised flux", fontsize=14)
-		axes[0].set_title(f"Spectrum {'placeholder_num'} - {'placeholder_file'}")
+		axes[0].set_title(f"Spectrum {1} - {spec_files[0]}")
 
 		# setup colours to match 
-		base_plot_params = inorma.base_plot_params
+		base_plot_params = plot_params['base']
 
 		fig.set_facecolor(base_plot_params['fig_facecolor'])
-
 		axes[0].title.set_color(base_plot_params['text_color'])
 
 		for ax in axes:
@@ -155,23 +127,6 @@ def main():
 			ax.tick_params(color=base_plot_params['axes_edgecolor'], labelcolor=base_plot_params['text_color'])
 			for spine in ax.spines.values():
 				spine.set_edgecolor(base_plot_params['axes_edgecolor'])
-
-		# now plot everything with placeholder values
-		plot_params = inorma.current_plot_params
-
-		ones = np.ones(1000)
-
-		artist_dict['spec'], = axes[0].plot(ones, ones, **plot_params['spec_kws'])
-		artist_dict['index'], = axes[0].plot(ones, ones, zorder=3, **plot_params['index_kws'])
-		artist_dict['sel'], = axes[0].plot(ones, ones, zorder=5,  **plot_params['sel_kws'])
-		artist_dict['man'], = axes[0].plot(ones[::10], ones[::10], zorder=6, **plot_params['man_kws'])
-		artist_dict['cont'], = axes[0].plot(ones, ones, zorder=4, **plot_params['cont_kws'])
-
-		artist_dict['norm_spec'], = axes[1].plot(ones, ones, **plot_params['spec_kws'])
-		artist_dict['norm_index'], = axes[1].plot(ones, ones, zorder=3, **plot_params['index_kws'])
-		artist_dict['norm_sel'], = axes[1].plot(ones, ones, zorder=5,  **plot_params['sel_kws'])
-		artist_dict['norm_man'], = axes[1].plot(ones[::10], ones[::10], zorder=6, **plot_params['man_kws'])
-		artist_dict['norm_cont'], = axes[1].plot(ones, ones, zorder=4, **plot_params['cont_kws'])
 
 	output_on_exit = True
 
@@ -197,7 +152,7 @@ def main():
 				wv_min, wv_max = spec_data[:, 0].min(), spec_data[:, 0].max()
 				flux_min, flux_max = spec_data[:, 1].min(), spec_data[:, 1].max()
 
-				man_mask = index_array['index'] == -1
+				man_mask = index_data['index'] == -1
 				man_wvs, man_flux = index_data['wvs'][man_mask], index_data['flux'][man_mask]
 
 				# save time, just update data on fig

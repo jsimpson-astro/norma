@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
 from norma.io import write_index_file, read_index_file, _index_dtypes
+from norma.plotting import plot_styles
 
 class InteractiveNorma:
     """
@@ -19,39 +20,16 @@ class InteractiveNorma:
         "Press enter or q to quit\n"
         )
     
-    # matplotlib axes.plot arguments for current spectrum
-    current_plot_params = dict(
-        spec_kws = {'color': '#074517', 'alpha': 0.3},
-        cont_kws = {'color': '#0d7a2a'},
-        index_kws = {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-        sel_kws = {'color': '#09521c', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
-        man_kws = {'color': '#12cc43', 'marker': 'D', 'linestyle': 'None', 'markersize': 7},
-        )
-    # matplotlib axes.plot arguments for spectra show above the current spectrum
-    # note that alpha is scaled to decrease the further away from `current` the spectrum is, starting at this value
-    above_plot_params = dict(
-        spec_kws={'color': '#726bd6', 'alpha': 0.2},
-        cont_kws={'color': '#14a3fc', 'alpha': 0.3}, 
-        index_kws={'color': '#14257a', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3},
-        sel_kws={'color': '#3054e3', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3}, 
-        man_kws={'color': '#38b8eb', 'alpha': 0.3, 'marker': 'D', 'linestyle': 'None', 'markersize': 4}
-        )
-    # matplotlib axes.plot arguments for spectra show below the current spectrum
-    # note that alpha is scaled to decrease the further away from `current` the spectrum is, starting at this value
-    below_plot_params = dict(
-        spec_kws={'color': '#f55668', 'alpha': 0.2},
-        cont_kws={'color': '#ff6176', 'alpha': 0.3}, 
-        index_kws={'color': '#66090e', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3},
-        sel_kws={'color': '#e32228', 'alpha': 0.3, 'marker': 'o', 'linestyle': 'None', 'markersize': 3}, 
-        man_kws={'color': '#ff1925', 'alpha': 0.3, 'marker': 'D', 'linestyle': 'None', 'markersize': 4}
-        )
+    plot_params = plot_styles['light']
+    base_plot_params = plot_params['base']
 
-    base_plot_params = dict(
-        fig_facecolor='white',
-        axes_facecolor='white',
-        text_color='black',
-        axes_edgecolor='black'
-        )
+    # add _kws suffix to the plot params in norma.plotting
+    # matplotlib axes.plot arguments for current spectrum
+    current_plot_params = {k+'_kws': v for k, v in plot_params['current'].items()}
+    # matplotlib axes.plot arguments for spectra show above the current spectrum
+    above_plot_params = {k+'_kws': v for k, v in plot_params['above'].items()}
+    # matplotlib axes.plot arguments for spectra show below the current spectrum
+    below_plot_params = {k+'_kws': v for k, v in plot_params['below'].items()}
 
     def __init__(
         self, 
