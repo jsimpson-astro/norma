@@ -23,16 +23,18 @@ def main():
 	out_suf = '.out'
 	plot_suf = '.png'
 
-	desc = "Interactively edit local maxima from spectra using outputs from norma_identify."
-	epilog = (
-		f"Index files should have the same names as their corresponding spectrum, but with the extension `{index_suf}`."
-		"Index files will be updated in-place during editing."
-		f"Normalised spectra will be output to the same filenames with the extension `{out_suf}`."
-		)
+	desc = f"""Interactively edit local maxima from spectra using outputs from `norma-identify` (or norma.find_max).
+
+Index files should have the same names as their corresponding spectrum, but with the extension `{index_suf}`.
+Index files will be updated in-place during editing.
+Normalised spectra will be output to the same filenames with the extension `{out_suf}`.
+
+"""
 
 	parser = argparse.ArgumentParser(prog="norma-select",
 									 description=desc,
-									 epilog=epilog)
+									 epilog=" ",
+									 formatter_class=argparse.RawTextHelpFormatter)
 
 	parser.add_argument('spec_files',
 	                    nargs='+',

@@ -22,15 +22,17 @@ def main():
 	out_suf = '.out'
 	plot_suf = '.png'
 
-	desc = "Identify local maxima from spectra and automatically select a continuum for normalisation."
-	epilog = (
-		f"Index files will be created for each spectrum with the extension `{index_suf}`."
-		f"Normalised spectra will be output to the same filenames with the extension `{out_suf}`."
-		)
+	desc = f"""Identify local maxima from spectra and automatically select a continuum for normalisation.
+
+Index files will be created for each spectrum with the extension `{index_suf}`.
+Normalised spectra will be output to the same filenames with the extension `{out_suf}`.
+
+"""
 
 	parser = argparse.ArgumentParser(prog="norma-identify",
 									 description=desc,
-									 epilog=epilog)
+									 epilog=" ",
+									 formatter_class=argparse.RawTextHelpFormatter)
 
 	parser.add_argument('spec_files',
 	                    nargs='+',
