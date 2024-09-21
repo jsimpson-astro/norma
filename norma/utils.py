@@ -219,7 +219,8 @@ def calculate_fwhm(
     
     # perform correlation on mask, padded with zeros
     ccf = correlate(log_flux, np.r_[np.zeros(extend), log_mask, np.zeros(extend)], mode='valid')
-    ccf = ccf / np.median(ccf)
+
+    ccf = ccf / np.median(ccf) if np.median(ccf) != 0 else ccf / np.median(ccf + 1e-6)
 
     p0 = (xcor_velocities[ccf.argmin()], 1000., ccf.min()-1, np.median(ccf))
 
