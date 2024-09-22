@@ -459,6 +459,7 @@ class InteractiveNorma:
 
         self._current_index = new_index
         self._update_title()
+        self._reset_home()
         
 
     def _hide_single(self, rel_idx: int, hide=True):
