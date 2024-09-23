@@ -419,8 +419,8 @@ class InteractiveNorma:
         # rel_idx_map = {i: idx for i, idx in zip(rel_idxs, current_indices)}
         # inv_rel_idx_map = {idx: i for i, idx in rel_idx_map.items()}
         # new_rel_idx_map = {i: idx for i, idx in zip(rel_idxs, new_indices)}
-        rel_idx_map = current_indices
-        new_rel_idx_map = new_indices
+        rel_idx_map = current_indices[n_ghosts:] + current_indices[:n_ghosts]
+        new_rel_idx_map = new_indices[n_ghosts:] + new_indices[:n_ghosts]
         
         new_spec_data_list = [None] * len(rel_idxs)
         new_index_data_list = [None] * len(rel_idxs)
@@ -437,16 +437,17 @@ class InteractiveNorma:
             #cur_rel_idx = inv_rel_idx_map.get(new_idx)
 
             # what is the new absolute index?
-            new_idx = new_rel_idx_map[idx - n_ghosts]
+            new_idx = new_rel_idx_map[idx]
 
             # is this in the current map? where? if not, None
-            cur_rel_idx = [idx_ - n_ghosts for idx_, cur_idx in enumerate(rel_idx_map) if cur_idx == new_idx]
+            cur_rel_idx = [idx_ - len(rel_idx_map) if idx_ > n_ghosts else idx_  
+                           for idx_, cur_idx in enumerate(rel_idx_map) if cur_idx == new_idx]
 
             # cur_rel_idx can contain more than one result
             # if we are moving down, take the first
             # if we are moving up, take the last
             if len(cur_rel_idx) > 0:
-                cur_rel_idx = cur_rel_idx[0] if new_index < self._current_index else cur_rel_idx[-1]
+                cur_rel_idx = cur_rel_idx[0] #if new_index < self._current_index else cur_rel_idx[-1]
             else:
                 cur_rel_idx = None
 
