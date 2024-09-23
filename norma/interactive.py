@@ -414,20 +414,42 @@ class InteractiveNorma:
         index_map = {idx: new_idx for idx, new_idx in zip(current_indices, new_indices)}
 
         rel_idxs = range(-n_ghosts, n_ghosts + 1)
-        rel_idx_map = {i: idx for i, idx in zip(rel_idxs, current_indices)}
-        inv_rel_idx_map = {idx: i for i, idx in rel_idx_map.items()}
-        new_rel_idx_map = {i: idx for i, idx in zip(rel_idxs, new_indices)}
+
+        # lets try switching these to lists to avoid dict replacements screwing things up
+        # rel_idx_map = {i: idx for i, idx in zip(rel_idxs, current_indices)}
+        # inv_rel_idx_map = {idx: i for i, idx in rel_idx_map.items()}
+        # new_rel_idx_map = {i: idx for i, idx in zip(rel_idxs, new_indices)}
+        rel_idx_map = current_indices
+        new_rel_idx_map = new_indices
         
         new_spec_data_list = [None] * len(rel_idxs)
         new_index_data_list = [None] * len(rel_idxs)
         
         write_on_exit = []
+        print('rel_idx_map: ', rel_idx_map)
+        print('new_rel_idx_map: ', new_rel_idx_map)
+        cur_rel_ = {}
 
         for idx in rel_idxs:
             # new absolute index from map
-            new_idx = new_rel_idx_map[idx]
+            #new_idx = new_rel_idx_map[idx]
             # this gets the rel_idx of the new data in the current data
-            cur_rel_idx = inv_rel_idx_map.get(new_idx)
+            #cur_rel_idx = inv_rel_idx_map.get(new_idx)
+
+            # what is the new absolute index?
+            new_idx = new_rel_idx_map[idx - n_ghosts]
+
+            # is this in the current map? where? if not, None
+            cur_rel_idx = [idx_ - n_ghosts for idx_, cur_idx in enumerate(rel_idx_map) if cur_idx == new_idx]
+
+            # cur_rel_idx can contain more than one result
+            # if we are moving down, take the first
+            # if we are moving up, take the last
+            if len(cur_rel_idx) > 0:
+                cur_rel_idx = cur_rel_idx[0] if new_index < self._current_index else cur_rel_idx[-1]
+            else:
+                cur_rel_idx = None
+
             # load data if required, else get it
             spec_data, index_data =  self._read_single(new_idx) if cur_rel_idx is None else (self._spec_data_list[cur_rel_idx], self._index_data_list[cur_rel_idx])
             
@@ -436,9 +458,16 @@ class InteractiveNorma:
 
             if cur_rel_idx is not None:
                 write_on_exit.append(idx)
+
+            cur_rel_[idx] = cur_rel_idx
         
+        #print('cur_rel: ', {idx: inv_rel_idx_map.get(new_rel_idx_map[idx]) for idx in rel_idxs})
+        print('cur_rel: ', cur_rel_)
         # write out
-        to_write = [rel_idx for rel_idx, idx in rel_idx_map.items() if idx not in new_rel_idx_map.values()]
+        #to_write = [rel_idx for rel_idx, idx in rel_idx_map.items() if idx not in new_rel_idx_map.values()]
+        to_write = [rel_idx - n_ghosts for rel_idx, idx in enumerate(rel_idx_map) if idx not in new_rel_idx_map]
+        print('to_write:', to_write)
+        print('on_exit: ', write_on_exit)
         _ = [self._write_single(rel_idx) for rel_idx in to_write]
 
         # keep track of loaded files that haven't been written out yet
@@ -693,7 +722,7 @@ class InteractiveNorma:
             else:
                 self._current_index = new_index
         else:
-            raise IndexError(f"Invalid index for spec_files and index_files of length {len(spec_files)}.")
+            raise IndexError(f"Invalid index for spec_files and index_files of length {len(self._spec_files)}.")
 
     @property
     def n_plot(self):
