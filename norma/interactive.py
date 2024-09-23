@@ -440,8 +440,8 @@ class InteractiveNorma:
             new_idx = new_rel_idx_map[idx]
 
             # is this in the current map? where? if not, None
-            cur_rel_idx = [idx_ - len(rel_idx_map) if idx_ > n_ghosts else idx_  
-                           for idx_, cur_idx in enumerate(rel_idx_map) if cur_idx == new_idx]
+            cur_rel_idx = [i - len(rel_idx_map) if i > n_ghosts else i
+                           for i, cur_idx in enumerate(rel_idx_map) if cur_idx == new_idx]
 
             # cur_rel_idx can contain more than one result
             # if we are moving down, take the first
@@ -466,7 +466,7 @@ class InteractiveNorma:
         print('cur_rel: ', cur_rel_)
         # write out
         #to_write = [rel_idx for rel_idx, idx in rel_idx_map.items() if idx not in new_rel_idx_map.values()]
-        to_write = [rel_idx - n_ghosts for rel_idx, idx in enumerate(rel_idx_map) if idx not in new_rel_idx_map]
+        to_write = [i - len(rel_idx_map) if i > n_ghosts else i for i, idx in enumerate(rel_idx_map) if idx not in new_rel_idx_map]
         print('to_write:', to_write)
         print('on_exit: ', write_on_exit)
         _ = [self._write_single(rel_idx) for rel_idx in to_write]
