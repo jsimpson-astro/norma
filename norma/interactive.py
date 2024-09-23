@@ -415,10 +415,7 @@ class InteractiveNorma:
 
         rel_idxs = range(-n_ghosts, n_ghosts + 1)
 
-        # lets try switching these to lists to avoid dict replacements screwing things up
-        # rel_idx_map = {i: idx for i, idx in zip(rel_idxs, current_indices)}
-        # inv_rel_idx_map = {idx: i for i, idx in rel_idx_map.items()}
-        # new_rel_idx_map = {i: idx for i, idx in zip(rel_idxs, new_indices)}
+        # reorder indices to map onto relative indices
         rel_idx_map = current_indices[n_ghosts:] + current_indices[:n_ghosts]
         new_rel_idx_map = new_indices[n_ghosts:] + new_indices[:n_ghosts]
         
@@ -426,16 +423,11 @@ class InteractiveNorma:
         new_index_data_list = [None] * len(rel_idxs)
         
         write_on_exit = []
-        print('rel_idx_map: ', rel_idx_map)
-        print('new_rel_idx_map: ', new_rel_idx_map)
-        cur_rel_ = {}
+        #print('rel_idx_map: ', rel_idx_map)
+        #print('new_rel_idx_map: ', new_rel_idx_map)
+        #cur_rel_ = {}
 
         for idx in rel_idxs:
-            # new absolute index from map
-            #new_idx = new_rel_idx_map[idx]
-            # this gets the rel_idx of the new data in the current data
-            #cur_rel_idx = inv_rel_idx_map.get(new_idx)
-
             # what is the new absolute index?
             new_idx = new_rel_idx_map[idx]
 
@@ -460,15 +452,15 @@ class InteractiveNorma:
             if cur_rel_idx is not None:
                 write_on_exit.append(idx)
 
-            cur_rel_[idx] = cur_rel_idx
+            #cur_rel_[idx] = cur_rel_idx # for debug
         
-        #print('cur_rel: ', {idx: inv_rel_idx_map.get(new_rel_idx_map[idx]) for idx in rel_idxs})
-        print('cur_rel: ', cur_rel_)
+        #print('cur_rel: ', cur_rel_)
+
         # write out
-        #to_write = [rel_idx for rel_idx, idx in rel_idx_map.items() if idx not in new_rel_idx_map.values()]
         to_write = [i - len(rel_idx_map) if i > n_ghosts else i for i, idx in enumerate(rel_idx_map) if idx not in new_rel_idx_map]
-        print('to_write:', to_write)
-        print('on_exit: ', write_on_exit)
+        #print('to_write:', to_write)
+        #print('on_exit: ', write_on_exit)
+
         _ = [self._write_single(rel_idx) for rel_idx in to_write]
 
         # keep track of loaded files that haven't been written out yet
