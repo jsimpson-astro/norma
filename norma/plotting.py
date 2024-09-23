@@ -124,9 +124,9 @@ _light_plot_params = {
     'current': dict(
         spec = {'color': '#074517', 'alpha': 0.3},
         cont = {'color': '#0d7a2a'},
-        index = {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-        sel = {'color': '#09521c', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
-        man = {'color': '#12cc43', 'marker': 'D', 'linestyle': 'None', 'markersize': 7},
+        index = {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 4},
+        sel = {'color': '#0d9e32', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
+        man = {'color': '#07d93e', 'marker': 'D', 'linestyle': 'None', 'markersize': 7},
         ),
     # for spectra above - alpha is reduced by 1/i for i above
     'above': dict(
@@ -146,11 +146,11 @@ _light_plot_params = {
         ),
     # for output - updates `current` parameters
     'out': dict(
-        spec = {'color': '#074517', 'alpha': 0.3},
-        cont = {'color': '#0d7a2a'},
-        index = {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 5},
-        sel = {'color': '#09521c', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
-        man = {'color': '#12cc43', 'marker': 'D', 'linestyle': 'None', 'markersize': 7},
+        spec = {'color': '#2e3b31', 'alpha': 0.3},
+        cont = {'color': 'r'},
+        index = {'color': 'k', 'marker': 'o', 'linestyle': 'None', 'markersize': 4},
+        sel = {'color': '#0d9e32', 'marker': 'o', 'linestyle': 'None', 'markersize': 6},
+        man = {'color': '#07d93e', 'marker': 'D', 'linestyle': 'None', 'markersize': 7},
         ),
 	}
 
