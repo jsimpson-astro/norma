@@ -73,16 +73,11 @@ def find_max(
     maxima_window: int, default: 7
         Half-window size to search for local maxima - lower values = less anchor points.
 
-    smoothing_kernel: {`rectangular`, `gaussian`, `savgol`, `erf`, `hat_exp`}, default: `rectangular`
+    smoothing_kernel: {`rectangular`, `gaussian`, `savgol`}, default: `rectangular`
         Kernel to use for smoothing of spectrum.
         
-    smoothing_width: float, optional
-        Half-width of smoothing kernel. 
-        Rounded to nearest integer and used a window if smoothing_kernel is `rectangular`, `gaussian`, or `savgol`.
-        For these kernels, the default value is 6. Must be larger than 2 for the `savgol` kernel.
-        
-        Used as half-width half-maximum (= FWHM / 2) if smoothing_kernel is `erf` or `hat_exp`. 
-        For these kernels, the default value is the value of `vfwhm`.
+    smoothing_width: int, default: 6
+        Half-width of smoothing kernel. Must be larger than 2 for the `savgol` kernel.
         
     telluric_mask: list of tuple[float, float], default: see below
         Telluric mask to apply to spectrum during calculation of `vfwhm`.
@@ -148,14 +143,17 @@ def find_max(
     smoothing_kernels = {'rectangular', 'gaussian', 'savgol', 'erf', 'hat_exp'}
     default_smoothing_width = {'rectangular': 6., 'gaussian': 6., 'savgol': 6., 
                                'erf': vfwhm, 'hat_exp': vfwhm}
+
+    # get and check smoothing kernels
+    smoothing_kernels = {'rectangular', 'gaussian', 'savgol'}
     
     smoothing_kernel = kwargs.get('smoothing_kernel', 'rectangular')
     if smoothing_kernel not in smoothing_kernels:
         raise ValueError(f"Invalid smoothing_kernel given: {smoothing_kernel}. Valid choices are {smoothing_kernels}.")
 
     # round to int if a window half-width is needed
-    smoothing_width = kwargs.get('smoothing_width', default_smoothing_width[smoothing_kernel])
-    smoothing_width = int(smoothing_width) if smoothing_kernel in {'rectangular', 'gaussian', 'savgol'} else smoothing_width
+    smoothing_width = kwargs.get('smoothing_width', 6)
+    #smoothing_width = int(smoothing_width) if smoothing_kernel in {'rectangular', 'gaussian', 'savgol'} else smoothing_width
 
     # get and check mask
     # this will fail if it isn't iterable and can't be unpacked to two elements anyways
@@ -191,6 +189,7 @@ def find_max(
         }
     check_int_names = [
         'maxima_window',
+        'smoothing_width',
         #'denoising_width',
         'clip_iters'
         ]
@@ -287,9 +286,8 @@ def find_max(
             vfwhm = 2.997e5 * 15 / wave_min
             logging.warning("Star out of the FWHM calibration range - FWHM capped to 15 A.")
             out_of_calibration = True
-        
-    #return fwhm, fwhm_err
-    fwhm2sig = 2**1.5 * np.log(2)**0.5
+    
+    #fwhm2sig = 2**1.5 * np.log(2)**0.5
     #print('vfwhm', vfwhm)
     # convert vfwhm to fwhm using min wavelength (gives largest fwhm when using equidistant grid)
     fwhm = wave_min * (vfwhm / 2.998e5) 
