@@ -167,13 +167,13 @@ def calculate_fwhm(
     if telluric_mask is not None:
         for lb, ub in telluric_mask:
             tmask = (wvs > lb) & (wvs < ub)
-            flux_norm[tmask] = continuum[tmask]
+            flux_norm[tmask] = 1
     
     # new ccf
     extend = 30
     
     # perform correlation on mask, padded with zeros
-    ccf = correlate(flux_norm, np.r_[np.zeros(extend), flux_norm, np.zeros(extend)], mode='valid')
+    ccf = correlate(flux_norm-1, np.r_[np.zeros(extend), flux_norm, np.zeros(extend)]-1, mode='valid')
 
     max_idx = ccf.argmax()
     ccf_max = ccf[max_idx]
@@ -189,8 +189,7 @@ def calculate_fwhm(
     error = 1 / (-0.5 * z2)**0.5
 
     # convert error to fwhm, convert fwhm to velocity units
-    fwhm = (error * 2**1.5 * np.log(2)**0.5) / wvs[wvs.size // 2 - extend + max_loc] * 2.998e5
-    fwhm_error = 0
+    fwhm = ((np.diff(wvs).mean() * error * 2**1.5 * np.log(2)**0.5) / wvs[wvs.size // 2 - extend + max_loc]) * 2.998e5
 
     if kwargs.get('plot_ccf'):
         import matplotlib.pyplot as plt
