@@ -47,7 +47,7 @@ Normalised spectra will be output to the same filenames with the extension `{out
 						help="Minimum radius of `rolling pin` in angstroms, in blue end of spectrum. Automatically determined if not provided from vfwhm.")
 	parser.add_argument('-r1', '--max-radius',
 						type=float,
-						help="Maximum radius of `rolling pin` in angstroms, in red end of spectrum. Automatically determined if not provided.")
+						help="Maximum radius of `rolling pin` in angstroms, in red end of spectrum. Automatically determined if not provided from min-radius.")
 
 	parser.add_argument('-pr', '--pr-func',
 						default='power',

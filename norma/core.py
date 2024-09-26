@@ -47,7 +47,7 @@ def find_max(
 
     max_radius: float, optional
         Maximum radius of `rolling pin` in angstroms, in red end of spectrum.
-        If not given, it is automatically determined from the spectrum.
+        If not given, it is automatically determined from the minimum radius.
 
     pr_func: {'power', 'sigmoid'}, default: `power`
         Functional form to use for scaling the radius of the `rolling pin` in large gaps.
@@ -282,8 +282,8 @@ def find_max(
     # compute vfwhm if needed
     out_of_calibration = False
     if vfwhm is None:
-        vfwhm, vfwhm_err = calculate_fwhm(wvs, flux_norm, telluric_mask, plot_ccf=kwargs.get('plot_ccf', False))
-        if wave_min * (vfwhm / 2.997e5) > 15:
+        vfwhm = calculate_fwhm(wvs, flux_norm, telluric_mask, plot_ccf=kwargs.get('plot_ccf', False))
+        if wave_min * (vfwhm / 2.998e5) > 15:
             vfwhm = 2.997e5 * 15 / wave_min
             logging.warning("Star out of the FWHM calibration range - FWHM capped to 15 A.")
             out_of_calibration = True
@@ -292,7 +292,7 @@ def find_max(
     fwhm2sig = 2**1.5 * np.log(2)**0.5
     #print('vfwhm', vfwhm)
     # convert vfwhm to fwhm using min wavelength (gives largest fwhm when using equidistant grid)
-    fwhm = wave_min * (vfwhm / 2.997e5) 
+    fwhm = wave_min * (vfwhm / 2.998e5) 
     #print('converted fwhm:', fwhm)
 
     # determine stretching parameter if not given
@@ -415,7 +415,7 @@ def find_max(
 
     if maxima_fluxes[-1] < flux_norm[-1]:
         maxima_wvs = np.hstack([maxima_wvs, grid[-1]])
-        maxima_fluxes = np.hstack([fluxes, flux_norm[-1]])
+        maxima_fluxes = np.hstack([maxima_fluxes, flux_norm[-1]])
         maxima_idxs = np.hstack([maxima_idxs, flux_norm.size - 1])
 
     # removal of cosmic peaks     
@@ -446,6 +446,7 @@ def find_max(
     #### calculate penalty ####
 
     min_radius = min(5., 10 * fwhm) if min_radius is None else min_radius
+    max_radius = max(150, 5 * min_radius) if max_radius is None else max_radius
     
     if out_of_calibration:
         narrow_win = 2.0  # 2 typical line width scale (small window for the first continuum)
@@ -472,26 +473,7 @@ def find_max(
     dx = 1 / narrow_win if dx * narrow_win < 1 else dx
 
     #print(f"converted fwhm: {fwhm:.4f} A. dx = {dx:.4f}, windows = {narrow_win}, {broad_win}")
-    
-    if max_radius is None:
-        penalty, max_radius = compute_penalty(grid, 
-                                              flux_norm, 
-                                              dx, 
-                                              narrow_win=narrow_win, 
-                                              broad_win=broad_win, 
-                                              get_max_radius=True
-                                             )
-        
-        # failed to calculate max_radius
-        # this logic seems a bit strange
-        if max_radius is None:
-            #print('Failed to calculate max_radius')
-            #max_radius = 5 * min_radius if out_of_calibration else min_radius
-            #max_radius = 5 * min_radius
-            max_radius = max(150, 5 * min_radius)
-    else:
-        penalty = compute_penalty(grid, flux_norm, dx, narrow_win=narrow_win, broad_win=broad_win)
-        
+    penalty = compute_penalty(grid, flux_norm, dx, narrow_win=narrow_win, broad_win=broad_win)
     penalty_adj = penalty.copy()
 
     #print(f"Minimum radius: {min_radius:.3f} A. Maximum radius: {max_radius:.3f} A.")

@@ -136,18 +136,15 @@ def apply_smooth(
     
     return flux_smooth
 
-def offset_gaus(xs, centre, fwhm, height, offset=1):
-    return height * norm.pdf(xs, centre, fwhm) + offset
-
 def calculate_fwhm(
     wvs: np.ndarray, 
     flux: np.ndarray,
     telluric_mask: list[tuple[float, float]] | None = None,
     **kwargs
-    ) -> tuple[float, float]:
+    ) -> float:
     """
     Calculate the velocity resolution of a spectrum using scipy.signal.correlate.
-    Returns fwhm and its error.
+    Returns fwhm in velocity units (km/s).
     
     """
     
@@ -158,8 +155,6 @@ def calculate_fwhm(
     continuum_right = rolling_quantile(flux, int(30/dwv), 1)
     continuum_left = rolling_quantile(flux[::-1], int(30/dwv), 1)[::-1]
     
-    #continuum_right = np.ravel(pd.DataFrame(flux).rolling(int(30 / dwv)).quantile(1))
-    #continuum_left = np.ravel(pd.DataFrame(flux[::-1]).rolling(int(30 / dwv)).quantile(1))[::-1]
     continuum_right[np.isnan(continuum_right)] = continuum_right[~np.isnan(continuum_right)][0]
     continuum_left[np.isnan(continuum_left)] = continuum_left[~np.isnan(continuum_left)][-1]
     continuum = np.c_[continuum_right, continuum_left].min(axis=1)
@@ -167,94 +162,54 @@ def calculate_fwhm(
     # rectangular smoothing of 15 AA provides more accurate weighting
     continuum = apply_smooth(continuum, int(15 / dwv), 'rectangular')
 
-    log_wvs = np.linspace(np.log10(wvs.min()), np.log10(wvs.max()), wvs.size)
-    log_flux = interp1d(log_wvs, flux / continuum, kind='cubic', bounds_error=False, fill_value='extrapolate')(log_wvs)
+    flux_norm = flux / continuum
 
-    # removing this for now
-    # if CCF_mask != "master":
-    #     mask_ccf = np.genfromtxt(CCF_mask + ".txt")
-    #     line_center = doppler_r(0.5 * (mask_ccf[:, 0] + mask_ccf[:, 1]), RV_sys)[0]
-    #     distance = np.abs(grid - line_center[:, np.newaxis])
-    #     index_f = np.argmin(distance, axis=1)
-    #     mask = np.zeros(len(spectre))
-    #     mask[index_f] = mask_ccf[:, 2]
-    #     log_mask = interp1d(
-    #         np.log10(grid), mask, kind="linear", bounds_error=False, fill_value="extrapolate"
-    #     )(log_grid)
-    # else:
-    index_f, wave_f, flux_f = produce_line(wvs, flux / continuum)
-    keep = (0.5 * (flux_f[:, 1] + flux_f[:, 2]) - flux_f[:, 0]) > 0.2
-    flux_f = flux_f[keep]
-    wave_f = wave_f[keep]
-    index_f = index_f[keep]
-    mask = np.zeros_like(flux)
-    mask[index_f[:, 0]] = 0.5 * (flux_f[:, 1] + flux_f[:, 2]) - flux_f[:, 0]
-    log_mask = interp1d(
-        np.log10(wvs), mask, kind="linear", bounds_error=False, fill_value="extrapolate"
-    )(log_wvs)
-    
     if telluric_mask is not None:
         for lb, ub in telluric_mask:
-            log_mask[(log_wvs > np.log10(lb)) & (log_wvs < np.log10(ub))] = 0
-
-    #### end of ccf mask ####
-    
-    # vrad, ccf = ccf_fun(log_wvs, log_flux, log_mask, extended=500)
-
-    # ccf = ccf[vrad.argsort()]
-    # vrad = vrad[vrad.argsort()]
-    # popt, pcov = curve_fit(gaussian, vrad / 1000, ccf, p0=[0, -0.5, 0.9, 3])
-    # errors_fit = np.sqrt(np.diag(pcov))
-
-    # ax.plot(vrad/1000, ccf, color='b', lw=1)
-    # ax.plot(vrad/1000, gaussian(vrad/1000, *popt), color='b', lw=1, ls='--')
+            tmask = (wvs > lb) & (wvs < ub)
+            flux_norm[tmask] = continuum[tmask]
     
     # new ccf
     extend = 30
-    # get (log) wavelengths over range of ccf, convert to velocities
-    xcor_wvs = 10**log_wvs[log_wvs.size // 2 - extend : log_wvs.size // 2 + extend + 1]
-    xcor_cenwave = xcor_wvs[xcor_wvs.size // 2]
-    xcor_velocities = 2.997e5 * (xcor_wvs - xcor_cenwave) / xcor_cenwave
-    xcor_wvs = log_wvs[log_wvs.size // 2 - extend : log_wvs.size // 2 + extend + 1]
     
     # perform correlation on mask, padded with zeros
-    ccf = correlate(log_flux, np.r_[np.zeros(extend), log_mask, np.zeros(extend)], mode='valid')
+    ccf = correlate(flux_norm, np.r_[np.zeros(extend), flux_norm, np.zeros(extend)], mode='valid')
 
-    ccf = ccf / np.median(ccf) if np.median(ccf) != 0 else ccf / np.median(ccf + 1e-6)
+    max_idx = ccf.argmax()
+    ccf_max = ccf[max_idx]
 
-    p0 = (xcor_velocities[ccf.argmin()], 1000., ccf.min()-1, np.median(ccf))
+    # clip edges
+    max_idx = 1 if max_idx == 0 else max_idx
+    max_idx = max_idx - 1 if max_idx == ccf.size - 1 else max_idx
+    
+    # quadratic approx to peak
+    ccf_max_a, ccf_max_b = ccf[max_idx-1], ccf[max_idx+1]
+    z1, z2 = ccf_max_b - ccf_max_a, ccf_max_a + ccf_max_b - 2 * ccf_max
+    max_loc = int(max_idx  - 0.5 * (z1 / z2))
+    error = 1 / (-0.5 * z2)**0.5
 
-    # fit gaussian to ccf
-    popt, pcov = curve_fit(offset_gaus, xcor_velocities, ccf, p0=p0, maxfev=100000)
-    # errors from diagonal of covariance matrix
-    perrors = np.sqrt(np.diag(pcov))
-
-    # scale sigma of gaussian by 2 sqrt(2 ln 2)
-    sig2fwhm = 2**1.5 * np.log(2)**0.5
-    fwhm, fwhm_error = popt[1] * sig2fwhm, perrors[1] * sig2fwhm
-
-    if fwhm_error/fwhm > 0.2:
-        logging.warning(f"FWHM CCF error large: vfwhm = {fwhm:.3f} +/- {fwhm_error:.3f} km/s.")
+    # convert error to fwhm, convert fwhm to velocity units
+    fwhm = (error * 2**1.5 * np.log(2)**0.5) / wvs[wvs.size // 2 - extend + max_loc] * 2.998e5
+    fwhm_error = 0
 
     if kwargs.get('plot_ccf'):
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(12, 5))
-        ax.plot(xcor_velocities, ccf, color='r', lw=1)
-        ax.plot(xcor_velocities, offset_gaus(xcor_velocities, *popt), color='r', lw=1, ls='--')
-        ax.set_title(f"vfwhm = {fwhm:.3f} +/- {fwhm_error:.3f} km/s, offset = {popt[0]:.3f} km/s")
+        ax.plot(xcor_wvs, ccf, color='r', lw=1)
+        ax.plot(xcor_wvs, offset_gaus(xcor_wvs, *popt), color='r', lw=1, ls='--')
+        ax.set_title(f"vfwhm = {fwhm:.3f} km/s, offset = {popt[0]:.3f} km/s")
 
         plt.show(block=False)
     
-    return fwhm, fwhm_error
+    return fwhm
 
 def compute_penalty(
     wvs: np.ndarray, 
     flux: np.ndarray, 
     dx: float,
     narrow_win: float = 10., 
-    broad_win: float = 100.,
-    get_max_radius: bool = False,
+    broad_win: float = 100.
     ) -> np.ndarray:
     """
     Compute a penalty map of a spectrum, which indicates large absorption features.
@@ -322,48 +277,7 @@ def compute_penalty(
     
     penalty[penalty < 0] = 0
 
-    # determine value for max_radius if not given
-    if get_max_radius:
-        threshold = 0.75
-        finished = False
-
-        difference = (continuum_large_win < continuum_small_win).astype('int')
-        broad_cluster = grouping(difference, 0.5, 0)[-1]
-
-        # clip borders
-        if broad_cluster[0][0] == 0:
-            broad_cluster = broad_cluster[1:]
-        if broad_cluster[-1][1] == wvs.size - 2:
-            broad_cluster = broad_cluster[:-1]
-
-        # get max penalty in clusters
-        penalty_cluster = np.array([penalty[r[0]:r[1]+1].max() for r in broad_cluster])
-        threshold = max(0.2, penalty_cluster.max() if penalty_cluster.size != 0 else 0.)
-
-        while threshold > 0.2:
-
-            broad_cluster_thresh = broad_cluster[penalty_cluster > threshold]
-            x = np.array([np.nanquantile(np.abs(np.diff(flux[r[0]:r[1]])), 0.1) for r in broad_cluster_thresh])
-            
-            if np.any(x != 0):
-                break
-            else:
-                threshold -= 0.01
-        
-        if threshold > 0.2:
-            cluster_centres = wvs[broad_cluster_thresh[:, 0:2]].mean(axis=1)
-            largest_cluster_idx = (broad_cluster_thresh[:, 2] / cluster_centres).argmax()
-            largest_cluster = broad_cluster_thresh[largest_cluster_idx, 2]
-            largest_radius = largest_cluster * (wv_max - wv_min) / wvs.size
-
-            max_radius = 2 * largest_radius * wv_min / cluster_centres[largest_cluster_idx] / penalty_cluster[penalty_cluster > threshold][largest_cluster_idx]
-            max_radius = min(max_radius, 150.)
-        else:
-            max_radius = None
-
-        return penalty, max_radius
-    else:
-        return penalty
+    return penalty
 
 ###############################################################################
 
