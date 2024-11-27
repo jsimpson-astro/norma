@@ -110,7 +110,7 @@ plt.show()
 ```
 Our new, tweaked spectrum should appear now, in the same format as before but with the changes made in `InteractiveNorma` applied.
 
-This is the extent of the main usage of norma as of the 0.1.0 version.
+This is the extent of the main usage of norma as of the 0.1 version.
 Should you encounter any issues, or need any help with using norma, please feel free to contact me or raise an issue here.
 
 
