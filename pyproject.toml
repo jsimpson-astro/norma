@@ -1,6 +1,6 @@
 [project]
 name = "norma"
-version = "0.1.2"
+version = "0.1.0"
 description = "Astronomy spectra fitting utilities"
 readme = "README.md"
 authors = [
