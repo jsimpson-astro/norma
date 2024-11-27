@@ -17,7 +17,7 @@ Both commands are well-documented and make good use of `argparse`, so help can b
 To install norma, you can simply download and install in one line with `pip`:
 
 ```
-pip install https://github.com/jsimpson-astro/norma/archive/master.zip
+pip install https://github.com/jsimpson-astro/norma/archive/main.zip
 ```
 
 ## Acknowledgement
