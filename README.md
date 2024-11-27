@@ -14,17 +14,12 @@ Both commands are well-documented and make good use of `argparse`, so help can b
 
 ## Installation
 
-To install norma, simply download the source, for example with `git`:
+To install norma, you can simply download and install in one line with `pip`:
 
 ```
-git clone https://github.com/jsimpson-astro/norma.git
+pip install https://github.com/jsimpson-astro/norma/archive/master.zip
 ```
 
-Then navigate to the source directory and install it with `pip`:
-
-```
-pip install .
-```
 ## Acknowledgement
 
 If you find norma useful in your work, please reference this repository (https://github.com/jsimpson-astro/norma) in a footnote, and be sure to cite the original authors of [RASSINE](https://github.com/MichaelCretignier/Rassine_public) too.
