@@ -25,6 +25,7 @@ Then navigate to the source directory and install it with `pip`:
 ```
 pip install .
 ```
+## Acknowledgement
 
 If you find norma useful in your work, please reference this repository (https://github.com/jsimpson-astro/norma) in a footnote, and be sure to cite the original authors of [RASSINE](https://github.com/MichaelCretignier/Rassine_public) too.
 
